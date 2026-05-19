@@ -1,0 +1,88 @@
+/* ============================================================
+   Unsplash controls — injected inside the native Featured Image box
+   ============================================================ */
+
+.unsplash-fi__divider {
+    margin: 10px 0 8px;
+    border: none;
+    border-top: 1px solid #dcdcde;
+}
+
+.unsplash-fi__heading {
+    margin: 0 0 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: #646970;
+    letter-spacing: 0.04em;
+}
+
+/* Keyword input */
+.unsplash-fi__keyword {
+    margin-bottom: 6px !important;
+    font-size: 12px !important;
+}
+
+/* Button row */
+.unsplash-fi__actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 6px;
+}
+
+.unsplash-fi__spinner {
+    float: none !important;
+    margin: 0 !important;
+    visibility: hidden;
+}
+
+.unsplash-fi__spinner.is-active {
+    visibility: visible;
+}
+
+/* Status area */
+.unsplash-fi__status {
+    padding: 5px 8px;
+    border-radius: 3px;
+    font-size: 12px;
+    margin-bottom: 6px;
+    line-height: 1.4;
+}
+
+.unsplash-fi__status--success {
+    background: #edfaef;
+    border-left: 3px solid #00a32a;
+    color: #1a6630;
+}
+
+.unsplash-fi__status--error {
+    background: #fce8e8;
+    border-left: 3px solid #d63638;
+    color: #8a1f1f;
+}
+
+.unsplash-fi__status--info {
+    background: #f0f6fc;
+    border-left: 3px solid #72aee6;
+    color: #2271b1;
+}
+
+/* Last-used keyword note */
+.unsplash-fi__meta {
+    font-size: 11px;
+    color: #646970;
+    margin: 4px 0;
+}
+
+/* Skip checkbox */
+.unsplash-fi__skip {
+    display: block;
+    font-size: 12px;
+    color: #646970;
+    margin-top: 6px;
+}
+
+.unsplash-fi__skip input[type="checkbox"] {
+    margin-right: 4px;
+}
