@@ -38,11 +38,11 @@ $summary = $plugin->logger->get_log_summary( 7 );
 	<table class="widefat striped unsplash-activity-log__table">
 		<thead>
 			<tr>
-				<th><?php esc_html_e( 'Time', 'unsplash-featured-images' ); ?></th>
-				<th><?php esc_html_e( 'Action', 'unsplash-featured-images' ); ?></th>
-				<th><?php esc_html_e( 'Post', 'unsplash-featured-images' ); ?></th>
-				<th><?php esc_html_e( 'Status', 'unsplash-featured-images' ); ?></th>
-				<th><?php esc_html_e( 'Details', 'unsplash-featured-images' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Time', 'unsplash-featured-images' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Action', 'unsplash-featured-images' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Post', 'unsplash-featured-images' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Status', 'unsplash-featured-images' ); ?></th>
+				<th scope="col"><?php esc_html_e( 'Details', 'unsplash-featured-images' ); ?></th>
 			</tr>
 		</thead>
 		<tbody>

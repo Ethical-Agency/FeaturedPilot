@@ -4,16 +4,20 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Derives the best Unsplash search keyword for a post via a fallback chain:
- *  1. Custom keyword stored in post meta
- *  2. Post title (stop words removed)
- *  3. First category name
- *  4. First tag name
- *  5. Plugin-level default keyword from settings
+ * Derives the best search keyword for a post.
+ *
+ * The keyword mode setting controls what happens when no per-post custom
+ * keyword is set:
+ *  - 'title'    (default): title → category → tag → global default
+ *  - 'keyword'  : global default keyword only
+ *  - 'combined' : global default + title terms merged into one query
+ *
+ * Per-post custom keyword always overrides the mode.
  */
 class Keyword_Generator {
 
 	const META_CUSTOM_KEYWORD = '_unsplash_custom_keyword';
+	const KEYWORD_MODE_OPTION = 'unsplash_keyword_mode';
 
 	/** Common English stop words to filter out of titles. */
 	private $stop_words = array(
@@ -40,12 +44,22 @@ class Keyword_Generator {
 	public function get_keyword_for_post( $post_id ) {
 		$post_id = absint( $post_id );
 
-		// 1. Custom keyword.
+		// Per-post custom keyword always wins, regardless of mode.
 		if ( $this->has_custom_keyword( $post_id ) ) {
 			return $this->get_custom_keyword( $post_id );
 		}
 
-		// 2. Post title.
+		$mode = $this->get_keyword_mode();
+
+		if ( 'keyword' === $mode ) {
+			return $this->get_default_keyword();
+		}
+
+		if ( 'combined' === $mode ) {
+			return $this->get_combined_keyword( $post_id );
+		}
+
+		// 'title' mode — original fallback chain.
 		$post = get_post( $post_id );
 		if ( $post && ! empty( $post->post_title ) ) {
 			$from_title = $this->extract_from_title( $post->post_title );
@@ -54,19 +68,16 @@ class Keyword_Generator {
 			}
 		}
 
-		// 3. Category.
 		$from_category = $this->get_category_keyword( $post_id );
 		if ( ! empty( $from_category ) ) {
 			return $from_category;
 		}
 
-		// 4. Tag.
 		$from_tag = $this->get_tag_keyword( $post_id );
 		if ( ! empty( $from_tag ) ) {
 			return $from_tag;
 		}
 
-		// 5. Plugin default.
 		return $this->get_default_keyword();
 	}
 
@@ -182,6 +193,39 @@ class Keyword_Generator {
 		$keyword = strtolower( trim( $keyword ) );
 		$keyword = preg_replace( '/\s+/', ' ', $keyword );
 		return $keyword;
+	}
+
+	/**
+	 * Return the active keyword mode, validated against the allowed list.
+	 *
+	 * @return string  'title' | 'keyword' | 'combined'
+	 */
+	private function get_keyword_mode() {
+		$mode = get_option( self::KEYWORD_MODE_OPTION, 'title' );
+		return in_array( $mode, array( 'title', 'keyword', 'combined' ), true ) ? $mode : 'title';
+	}
+
+	/**
+	 * Combine the global default keyword with terms extracted from the post title.
+	 * Falls back to just the default keyword if the title yields nothing.
+	 *
+	 * @param int $post_id
+	 * @return string
+	 */
+	private function get_combined_keyword( $post_id ) {
+		$default = $this->get_default_keyword();
+
+		$post = get_post( $post_id );
+		if ( ! $post || empty( $post->post_title ) ) {
+			return $default;
+		}
+
+		$title_terms = $this->extract_from_title( $post->post_title );
+		if ( empty( $title_terms ) ) {
+			return $default;
+		}
+
+		return $this->clean_keyword( $default . ' ' . $title_terms );
 	}
 
 	/**

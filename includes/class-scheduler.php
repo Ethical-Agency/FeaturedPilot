@@ -163,7 +163,7 @@ class Scheduler {
 		$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 
 		$plugin  = Unsplash_Featured_Images::get_instance();
-		$results = $plugin->api->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
+		$results = $plugin->source_manager->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
 
 		if ( is_wp_error( $results ) || empty( $results['results'][0] ) ) {
 			$this->logger->log_error(
@@ -174,8 +174,11 @@ class Scheduler {
 			return;
 		}
 
-		$photo_id      = sanitize_text_field( $results['results'][0]['id'] );
-		$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace );
+		$photo       = $results['results'][0];
+		$photo_id    = sanitize_text_field( $photo['id'] );
+		$source_slug = sanitize_key( $photo['source'] ?? 'unsplash' );
+
+		$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace, $source_slug );
 
 		if ( is_wp_error( $attachment_id ) ) {
 			$this->logger->log_error( $attachment_id->get_error_message(), $post_id, array( 'keyword' => $keyword ) );
@@ -184,6 +187,7 @@ class Scheduler {
 
 		update_post_meta( $post_id, '_unsplash_last_keyword', sanitize_text_field( $keyword ) );
 		update_post_meta( $post_id, '_unsplash_assignment_method', 'scheduled' );
+		update_post_meta( $post_id, '_fp_photo_source', $source_slug );
 	}
 
 	// -------------------------------------------------------------------------

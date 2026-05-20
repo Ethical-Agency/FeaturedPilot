@@ -7,9 +7,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-$keyword   = $meta_box->get_post_keyword( $post_id );
-$last_info = $meta_box->get_last_update_info( $post_id );
-$skip_auto = (bool) get_post_meta( $post_id, '_unsplash_skip_auto', true );
+$keyword          = $meta_box->get_post_keyword( $post_id );
+$last_info        = $meta_box->get_last_update_info( $post_id );
+$skip_auto        = (bool) get_post_meta( $post_id, '_unsplash_skip_auto', true );
+$preferred_source = sanitize_key( get_post_meta( $post_id, '_fp_preferred_source', true ) );
+$keyword_mode     = get_option( 'unsplash_keyword_mode', 'title' );
+
+$placeholder_map = array(
+	'title'    => __( 'auto-detected from title (leave blank)', 'unsplash-featured-images' ),
+	'keyword'  => __( 'override global keyword (leave blank to use default)', 'unsplash-featured-images' ),
+	'combined' => __( 'override global + title keyword (leave blank to combine)', 'unsplash-featured-images' ),
+);
+$placeholder = $placeholder_map[ $keyword_mode ] ?? $placeholder_map['title'];
 
 wp_nonce_field( 'unsplash_meta_box_nonce', 'unsplash_meta_box_nonce_field' );
 ?>
@@ -26,19 +35,50 @@ wp_nonce_field( 'unsplash_meta_box_nonce', 'unsplash_meta_box_nonce_field' );
 		   name="unsplash_custom_keyword"
 		   id="unsplash-keyword-<?php echo esc_attr( $post_id ); ?>"
 		   value="<?php echo esc_attr( $keyword ); ?>"
-		   placeholder="<?php esc_attr_e( 'keyword (auto-detected if blank)', 'unsplash-featured-images' ); ?>"
+		   placeholder="<?php echo esc_attr( $placeholder ); ?>"
 		   class="widefat unsplash-fi__keyword" />
 
+	<!-- Source selector -->
+	<div class="unsplash-fi__source-pills" role="group" aria-label="<?php esc_attr_e( 'Image source', 'unsplash-featured-images' ); ?>">
+		<?php
+		$sources = array(
+			''         => __( 'Auto', 'unsplash-featured-images' ),
+			'unsplash' => 'Unsplash',
+			'pexels'   => 'Pexels',
+			'pixabay'  => 'Pixabay',
+		);
+		foreach ( $sources as $slug => $label ) :
+			$active = ( $slug === $preferred_source ) ? ' fp-pill--active' : '';
+		?>
+		<button type="button"
+				class="fp-pill<?php echo esc_attr( $active ); ?>"
+				data-source="<?php echo esc_attr( $slug ); ?>"
+				aria-pressed="<?php echo $slug === $preferred_source ? 'true' : 'false'; ?>">
+			<?php echo esc_html( $label ); ?>
+		</button>
+		<?php endforeach; ?>
+		<input type="hidden" name="fp_preferred_source" id="fp-preferred-source" value="<?php echo esc_attr( $preferred_source ); ?>" />
+	</div>
+
+	<!-- Fetch Previews button -->
 	<div class="unsplash-fi__actions">
 		<button type="button"
 				class="button unsplash-fi__btn"
-				id="unsplash-find-image"
+				id="unsplash-fetch-previews"
 				data-post-id="<?php echo esc_attr( $post_id ); ?>">
-			<?php esc_html_e( 'Fetch Image', 'unsplash-featured-images' ); ?>
+			<?php esc_html_e( 'Fetch Previews', 'unsplash-featured-images' ); ?>
 		</button>
 		<span class="spinner unsplash-fi__spinner"></span>
 	</div>
 
+	<!-- Preview grid (populated by JS) -->
+	<div id="unsplash-preview-grid"
+		 class="unsplash-fi__preview-grid"
+		 aria-live="polite"
+		 aria-label="<?php esc_attr_e( 'Photo preview grid', 'unsplash-featured-images' ); ?>">
+	</div>
+
+	<!-- Status message -->
 	<div id="unsplash-status"
 		 class="unsplash-fi__status"
 		 role="status"

@@ -4,22 +4,22 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Downloads an Unsplash photo and uploads it to the WordPress Media Library.
+ * Downloads a photo from any configured source and uploads it to the WordPress Media Library.
  */
 class Image_Handler {
 
 	const MAX_FILE_SIZE  = 10485760; // 10 MB in bytes.
 	const ALLOWED_MIMES  = array( 'image/jpeg', 'image/png' );
 
-	/** @var Unsplash_API */
-	private $api;
+	/** @var Source_Manager */
+	private $source_manager;
 
 	/** @var Activity_Logger */
 	private $logger;
 
-	public function __construct( Unsplash_API $api, Activity_Logger $logger ) {
-		$this->api    = $api;
-		$this->logger = $logger;
+	public function __construct( Source_Manager $source_manager, Activity_Logger $logger ) {
+		$this->source_manager = $source_manager;
+		$this->logger         = $logger;
 	}
 
 	// -------------------------------------------------------------------------
@@ -27,30 +27,32 @@ class Image_Handler {
 	// -------------------------------------------------------------------------
 
 	/**
-	 * Download a photo from Unsplash and set it as the featured image for a post.
+	 * Download a photo from a source and set it as the featured image for a post.
 	 *
 	 * @param int    $post_id          Target post.
-	 * @param string $photo_id         Unsplash photo ID.
+	 * @param string $photo_id         Source-native photo ID.
 	 * @param bool   $replace_existing Replace if post already has a featured image.
+	 * @param string $source_slug      'unsplash' | 'pexels' | 'pixabay'.
 	 * @return int|WP_Error  Attachment ID on success.
 	 */
-	public function download_and_upload_image( $post_id, $photo_id, $replace_existing = false ) {
-		$post_id  = absint( $post_id );
-		$photo_id = sanitize_text_field( $photo_id );
+	public function download_and_upload_image( $post_id, $photo_id, $replace_existing = false, $source_slug = 'unsplash' ) {
+		$post_id     = absint( $post_id );
+		$photo_id    = sanitize_text_field( $photo_id );
+		$source_slug = sanitize_key( $source_slug ?: 'unsplash' );
 
 		if ( ! $replace_existing && has_post_thumbnail( $post_id ) ) {
 			return new WP_Error( 'has_thumbnail', __( 'Post already has a featured image.', 'unsplash-featured-images' ) );
 		}
 
 		// Get photo metadata.
-		$photo_data = $this->api->get_photo( $photo_id );
+		$photo_data = $this->source_manager->get_photo( $photo_id, $source_slug );
 		if ( is_wp_error( $photo_data ) ) {
 			$this->logger->log_error( 'Failed to get photo data: ' . $photo_data->get_error_message(), $post_id );
 			return $photo_data;
 		}
 
-		// Get the download URL (also triggers Unsplash download event).
-		$image_url = $this->api->download_photo( $photo_id, 'regular' );
+		// Get the download URL (triggers Unsplash download event when applicable).
+		$image_url = $this->source_manager->download_photo( $photo_id, 'regular', $source_slug );
 		if ( is_wp_error( $image_url ) ) {
 			$this->logger->log_error( 'Failed to get download URL: ' . $image_url->get_error_message(), $post_id );
 			return $image_url;
@@ -77,7 +79,7 @@ class Image_Handler {
 		if ( ! empty( $filetype['ext'] ) ) {
 			$ext = $filetype['ext'];
 		}
-		$filename = $this->get_safe_filename( 'unsplash-' . $photo_id . '.' . $ext );
+		$filename = $this->get_safe_filename( $source_slug . '-' . $photo_id . '.' . $ext );
 
 		// Upload to Media Library.
 		$attachment_id = $this->upload_to_media_library( $tmp_path, $filename, $photo_data );
@@ -99,6 +101,7 @@ class Image_Handler {
 			$post_id,
 			array(
 				'photo_id'      => $photo_id,
+				'source'        => $source_slug,
 				'attachment_id' => $attachment_id,
 			)
 		);
@@ -126,6 +129,7 @@ class Image_Handler {
 		update_post_meta( $post_id, '_unsplash_photo_id', sanitize_text_field( $photo_data['id'] ?? '' ) );
 		update_post_meta( $post_id, '_unsplash_photo_url', esc_url_raw( $photo_data['links']['html'] ?? '' ) );
 		update_post_meta( $post_id, '_unsplash_assignment_method', 'manual' );
+		update_post_meta( $post_id, '_fp_photo_source', sanitize_key( $photo_data['source'] ?? 'unsplash' ) );
 
 		return true;
 	}
@@ -287,6 +291,7 @@ class Image_Handler {
 		update_post_meta( $attachment_id, '_unsplash_photo_url', esc_url_raw( $photo_data['links']['html'] ?? '' ) );
 		update_post_meta( $attachment_id, '_unsplash_download_link', esc_url_raw( $photo_data['links']['download'] ?? '' ) );
 		update_post_meta( $attachment_id, '_unsplash_assigned_date', current_time( 'mysql' ) );
+		update_post_meta( $attachment_id, '_fp_photo_source', sanitize_key( $photo_data['source'] ?? 'unsplash' ) );
 	}
 
 	/**
@@ -310,12 +315,14 @@ class Image_Handler {
 		if ( ! empty( $description ) ) {
 			return wp_trim_words( sanitize_text_field( $description ), 10 );
 		}
-		$name = $photo_data['user']['name'] ?? '';
+		$name   = $photo_data['user']['name'] ?? '';
+		$source = ucfirst( sanitize_key( $photo_data['source'] ?? 'unsplash' ) );
 		if ( ! empty( $name ) ) {
-			/* translators: %s: photographer name */
-			return sprintf( __( 'Photo by %s on Unsplash', 'unsplash-featured-images' ), sanitize_text_field( $name ) );
+			/* translators: 1: photographer name, 2: source name (Unsplash/Pexels/Pixabay) */
+			return sprintf( __( 'Photo by %1$s on %2$s', 'unsplash-featured-images' ), sanitize_text_field( $name ), $source );
 		}
-		return __( 'Unsplash Photo', 'unsplash-featured-images' );
+		/* translators: %s: source name */
+		return sprintf( __( '%s Photo', 'unsplash-featured-images' ), $source );
 	}
 
 	/**
@@ -329,11 +336,13 @@ class Image_Handler {
 		if ( ! empty( $alt ) ) {
 			return sanitize_text_field( $alt );
 		}
-		$name = $photo_data['user']['name'] ?? '';
+		$name   = $photo_data['user']['name'] ?? '';
+		$source = ucfirst( sanitize_key( $photo_data['source'] ?? 'unsplash' ) );
 		if ( ! empty( $name ) ) {
-			/* translators: %s: photographer name */
-			return sprintf( __( 'Photo by %s on Unsplash', 'unsplash-featured-images' ), sanitize_text_field( $name ) );
+			/* translators: 1: photographer name, 2: source name */
+			return sprintf( __( 'Photo by %1$s on %2$s', 'unsplash-featured-images' ), sanitize_text_field( $name ), $source );
 		}
-		return __( 'Unsplash Photo', 'unsplash-featured-images' );
+		/* translators: %s: source name */
+		return sprintf( __( '%s Photo', 'unsplash-featured-images' ), $source );
 	}
 }

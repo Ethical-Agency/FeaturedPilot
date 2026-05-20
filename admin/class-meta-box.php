@@ -10,8 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class Unsplash_Meta_Box {
 
-	/** @var Unsplash_API */
-	private $api;
+	/** @var Source_Manager */
+	private $source_manager;
 
 	/** @var Keyword_Generator */
 	private $keyword_generator;
@@ -19,8 +19,8 @@ class Unsplash_Meta_Box {
 	/** @var Image_Handler */
 	private $image_handler;
 
-	public function __construct( Unsplash_API $api, Keyword_Generator $keyword_generator, Image_Handler $image_handler ) {
-		$this->api               = $api;
+	public function __construct( Source_Manager $source_manager, Keyword_Generator $keyword_generator, Image_Handler $image_handler ) {
+		$this->source_manager    = $source_manager;
 		$this->keyword_generator = $keyword_generator;
 		$this->image_handler     = $image_handler;
 
@@ -73,18 +73,34 @@ class Unsplash_Meta_Box {
 			true
 		);
 		global $post;
+		$post_id         = $post ? absint( $post->ID ) : 0;
+		$preferred_source = $post_id ? sanitize_key( get_post_meta( $post_id, '_fp_preferred_source', true ) ) : '';
+		$keyword_mode    = get_option( 'unsplash_keyword_mode', 'title' );
+
 		wp_localize_script(
 			'unsplash-fi-meta-box',
 			'unsplashMetaBox',
 			array(
-				'ajaxUrl' => admin_url( 'admin-ajax.php' ),
-				'nonce'   => wp_create_nonce( 'unsplash_action_nonce' ),
-				'postId'  => $post ? absint( $post->ID ) : 0,
-				'i18n'    => array(
-					'finding' => __( 'Finding image…', 'unsplash-featured-images' ),
-					'success' => __( 'Featured image set!', 'unsplash-featured-images' ),
-					'error'   => __( 'Something went wrong. Please try again.', 'unsplash-featured-images' ),
-					'preview' => __( 'Loading preview…', 'unsplash-featured-images' ),
+				'ajaxUrl'         => admin_url( 'admin-ajax.php' ),
+				'nonce'           => wp_create_nonce( 'unsplash_action_nonce' ),
+				'postId'          => $post_id,
+				'preferredSource' => $preferred_source,
+				'keywordMode'     => esc_html( $keyword_mode ),
+				'sources'         => array(
+					array( 'slug' => '',         'label' => __( 'Auto', 'unsplash-featured-images' ) ),
+					array( 'slug' => 'unsplash',  'label' => 'Unsplash' ),
+					array( 'slug' => 'pexels',    'label' => 'Pexels' ),
+					array( 'slug' => 'pixabay',   'label' => 'Pixabay' ),
+				),
+				'i18n'            => array(
+					'finding'       => __( 'Finding image…', 'unsplash-featured-images' ),
+					'success'       => __( 'Featured image set!', 'unsplash-featured-images' ),
+					'error'         => __( 'Something went wrong. Please try again.', 'unsplash-featured-images' ),
+					'loadingPreviews' => __( 'Loading previews…', 'unsplash-featured-images' ),
+					'fetchPreviews' => __( 'Fetch Previews', 'unsplash-featured-images' ),
+					'useThis'       => __( 'Use This', 'unsplash-featured-images' ),
+					'noResults'     => __( 'No photos found. Try a different keyword.', 'unsplash-featured-images' ),
+					'by'            => __( 'by', 'unsplash-featured-images' ),
 				),
 			)
 		);
@@ -112,6 +128,11 @@ class Unsplash_Meta_Box {
 			$keyword = sanitize_text_field( wp_unslash( $_POST['unsplash_custom_keyword'] ) );
 			$this->keyword_generator->set_custom_keyword( $post_id, $keyword );
 			update_post_meta( $post_id, '_unsplash_last_keyword', $keyword );
+		}
+
+		if ( isset( $_POST['fp_preferred_source'] ) ) {
+			$source = sanitize_key( wp_unslash( $_POST['fp_preferred_source'] ) );
+			update_post_meta( $post_id, '_fp_preferred_source', $source );
 		}
 
 		$skip = isset( $_POST['unsplash_skip_auto'] ) ? 1 : 0;

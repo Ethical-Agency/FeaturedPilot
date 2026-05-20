@@ -4,17 +4,118 @@
 
 	$(function () {
 
-		// ---------------------------------------------------------------
-		// API connection test
-		// ---------------------------------------------------------------
-		$( '#unsplash-test-api' ).on( 'click', function () {
+		// ===================================================================
+		// Tab Switching
+		// ===================================================================
+		var STORAGE_KEY = 'fp_active_tab';
+
+		function activateTab( slug ) {
+			$( '.fp-tab-nav__item' ).each(function () {
+				var target = $( this ).attr( 'aria-controls' );
+				var isThis = ( target === slug );
+				$( this )
+					.toggleClass( 'fp-tab-nav__item--active', isThis )
+					.attr( 'aria-selected', isThis ? 'true' : 'false' )
+					.attr( 'tabindex', isThis ? '0' : '-1' );
+			});
+
+			$( '.fp-tab-panel' ).each(function () {
+				var isThis = ( this.id === slug );
+				$( this ).toggleClass( 'fp-tab-panel--active', isThis );
+				if ( isThis ) {
+					$( this ).removeAttr( 'hidden' );
+				} else {
+					$( this ).attr( 'hidden', '' );
+				}
+			});
+
+			try { localStorage.setItem( STORAGE_KEY, slug ); } catch ( e ) {}
+		}
+
+		function getDefaultTab() {
+			var hash = location.hash.replace( '#', '' );
+			if ( hash && $( '#' + hash ).length ) {
+				return hash;
+			}
+			try {
+				var saved = localStorage.getItem( STORAGE_KEY );
+				if ( saved && $( '#' + saved ).length ) {
+					return saved;
+				}
+			} catch ( e ) {}
+			return 'fp-tab-sources';
+		}
+
+		// Activate initial tab.
+		activateTab( getDefaultTab() );
+
+		// Tab click handler.
+		$( '.fp-tab-nav__item' ).on( 'click', function () {
+			activateTab( $( this ).attr( 'aria-controls' ) );
+		});
+
+		// Hash navigation support.
+		$( window ).on( 'hashchange', function () {
+			var hash = location.hash.replace( '#', '' );
+			if ( hash && $( '#' + hash ).length ) {
+				activateTab( hash );
+			}
+		});
+
+		// ===================================================================
+		// Option Cards — JS fallback for browsers without :has() support
+		// ===================================================================
+		function syncOptionCards( $group ) {
+			$group.find( 'input[type="radio"]' ).each(function () {
+				$( this ).closest( '.fp-option-card' )
+					.toggleClass( 'fp-option-card--selected', $( this ).is( ':checked' ) );
+			});
+		}
+
+		// Initial sync.
+		$( '.fp-option-cards' ).each(function () {
+			syncOptionCards( $( this ) );
+		});
+
+		// On change.
+		$( document ).on( 'change', '.fp-option-cards input[type="radio"]', function () {
+			syncOptionCards( $( this ).closest( '.fp-option-cards' ) );
+		});
+
+		// ===================================================================
+		// Source Priority Drag-to-Reorder (jQuery UI Sortable)
+		// ===================================================================
+		var $order = $( '#fp-source-order' );
+		var $priorityInput = $( '#fp-source-priority-input' );
+
+		if ( $order.length && $.fn.sortable ) {
+			$order.sortable({
+				handle:   '.fp-source-order__handle',
+				axis:     'y',
+				distance: 5,
+				stop: function () {
+					var slugs = [];
+					$order.find( '.fp-source-order__item' ).each(function () {
+						slugs.push( $( this ).data( 'source' ) );
+					});
+					$priorityInput.val( slugs.join( ',' ) );
+				},
+			});
+		}
+
+		// ===================================================================
+		// Per-Source Test Connection Buttons
+		// ===================================================================
+		$( document ).on( 'click', '.fp-test-btn', function () {
 			var $btn    = $( this );
-			var $result = $( '#unsplash-api-test-result' );
+			var source  = $btn.data( 'source' );
+			var $result = $btn.closest( '.fp-source-card__key-wrap' ).find( '.fp-test-result' );
+			var $keyInput = $btn.siblings( 'input[type="password"]' );
+			var keyVal  = $keyInput.val().trim();
 
 			$btn.prop( 'disabled', true );
-			$result
-				.text( unsplashAdmin.i18n.testing )
-				.removeClass( 'unsplash-inline-result--success unsplash-inline-result--error' );
+			$result.text( unsplashAdmin.i18n.testing )
+				   .removeClass( 'fp-test-result--ok fp-test-result--err' );
 
 			$.ajax({
 				url:    unsplashAdmin.ajaxUrl,
@@ -24,59 +125,168 @@
 					nonce:   unsplashAdmin.nonce,
 					post_id: 0,
 					dry_run: 1,
+					source:  source,
+					key:     keyVal,
 				},
 				success: function ( response ) {
 					if ( response && response.success ) {
 						$result.text( unsplashAdmin.i18n.testSuccess )
-							   .addClass( 'unsplash-inline-result--success' );
+							   .addClass( 'fp-test-result--ok' );
 					} else {
 						var msg = ( response && response.data && response.data.message ) ? response.data.message : '';
-						$result.text( unsplashAdmin.i18n.testFail + ( msg ? ' ' + msg : '' ) )
-							   .addClass( 'unsplash-inline-result--error' );
+						$result.text( unsplashAdmin.i18n.testFail + ( msg ? ' — ' + msg : '' ) )
+							   .addClass( 'fp-test-result--err' );
 					}
 				},
 				error: function () {
-					$result.text( unsplashAdmin.i18n.testFail )
-						   .addClass( 'unsplash-inline-result--error' );
+					$result.text( unsplashAdmin.i18n.testFail ).addClass( 'fp-test-result--err' );
 				},
 				complete: function () {
 					$btn.prop( 'disabled', false );
-				}
+				},
 			});
 		});
 
-		// ---------------------------------------------------------------
-		// Bulk Run — persistent queue, hourly auto-resume via WP-Cron
-		// ---------------------------------------------------------------
+		// ===================================================================
+		// Live Rate Gauges — poll every 60 s, update on response
+		// ===================================================================
+		function updateGauges( statusData ) {
+			$.each( statusData, function ( slug, info ) {
+				var $gauge = $( '.fp-gauge[data-source="' + slug + '"]' );
+				if ( ! $gauge.length ) return;
+
+				var remaining = parseInt( info.remaining, 10 ) || 0;
+				var total     = parseInt( info.total, 10 )     || 1;
+				var pct       = Math.min( 100, Math.round( remaining / total * 100 ) );
+
+				// Width + aria.
+				$gauge.find( '.fp-gauge__fill' )
+					  .css( 'width', pct + '%' )
+					  .attr( 'aria-valuenow', remaining )
+					  .attr( 'aria-valuemax', total );
+
+				$gauge.find( '.fp-gauge__remaining' ).text( remaining );
+				$gauge.find( '.fp-gauge__total' ).text( total );
+				$gauge.find( '.fp-gauge__hits' ).text( 'Hits today: ' + ( parseInt( info.hits_today, 10 ) || 0 ) );
+
+				// Badge on the order list item.
+				var $badge = $( '.fp-source-order__item[data-source="' + slug + '"] .fp-source-order__badge' );
+				if ( $badge.length ) {
+					if ( info.connected ) {
+						$badge.text( 'Connected' )
+							  .removeClass( 'fp-source-order__badge--disconnected' )
+							  .addClass( 'fp-source-order__badge--connected' );
+					} else {
+						$badge.text( 'Not configured' )
+							  .removeClass( 'fp-source-order__badge--connected' )
+							  .addClass( 'fp-source-order__badge--disconnected' );
+					}
+				}
+
+				// Colour class.
+				$gauge.removeClass( 'fp-gauge--ok fp-gauge--warn fp-gauge--critical fp-gauge--unknown' );
+				if ( total <= 0 ) {
+					$gauge.addClass( 'fp-gauge--unknown' );
+				} else if ( pct >= 40 ) {
+					$gauge.addClass( 'fp-gauge--ok' );
+				} else if ( pct >= 15 ) {
+					$gauge.addClass( 'fp-gauge--warn' );
+				} else {
+					$gauge.addClass( 'fp-gauge--critical' );
+				}
+			});
+		}
+
+		// Apply initial values from inline data.
+		if ( unsplashAdmin.rateStatus ) {
+			updateGauges( unsplashAdmin.rateStatus );
+		}
+
+		// Poll for fresh data every 60 s.
+		setInterval(function () {
+			$.ajax({
+				url:    unsplashAdmin.ajaxUrl,
+				method: 'POST',
+				data:   { action: 'fp_rate_limit_status', nonce: unsplashAdmin.nonce },
+				success: function ( response ) {
+					if ( response && response.success && response.data ) {
+						updateGauges( response.data );
+					}
+				},
+			});
+		}, 60000 );
+
+		// ===================================================================
+		// Clear Logs
+		// ===================================================================
+		$( '#fp-clear-logs' ).on( 'click', function () {
+			if ( ! window.confirm( unsplashAdmin.i18n.clearLogsConfirm ) ) return;
+
+			var $btn    = $( this );
+			var $result = $( '#fp-clear-logs-result' );
+
+			$btn.prop( 'disabled', true );
+			$result.text( '' ).removeClass( 'fp-inline-result--success fp-inline-result--error' );
+
+			$.ajax({
+				url:    unsplashAdmin.ajaxUrl,
+				method: 'POST',
+				data:   { action: 'fp_clear_logs', nonce: unsplashAdmin.nonce },
+				success: function ( response ) {
+					if ( response && response.success ) {
+						$result.text( unsplashAdmin.i18n.clearLogsOk ).addClass( 'fp-inline-result--success' );
+						// Empty the table body, replace with "no logs" message.
+						var $logWrap = $( '.unsplash-activity-log' );
+						if ( $logWrap.length ) {
+							$logWrap.find( 'table' ).remove();
+							if ( ! $logWrap.find( 'p' ).length ) {
+								$logWrap.append( '<p>' + unsplashAdmin.i18n.clearLogsOk + '</p>' );
+							}
+						}
+					} else {
+						$result.text( 'Error.' ).addClass( 'fp-inline-result--error' );
+					}
+				},
+				error: function () {
+					$result.text( 'Error.' ).addClass( 'fp-inline-result--error' );
+				},
+				complete: function () {
+					$btn.prop( 'disabled', false );
+				},
+			});
+		});
+
+		// ===================================================================
+		// Bulk Run (unchanged logic, just living in its tab now)
+		// ===================================================================
 		var $startBtn      = $( '#unsplash-bulk-start' );
 		var $cancelBtn     = $( '#unsplash-bulk-cancel' );
-		var $status        = $( '#unsplash-bulk-status' );
+		var $bulkStatus    = $( '#unsplash-bulk-status' );
 		var $bar           = $( '#unsplash-bulk-bar' );
 		var $label         = $( '#unsplash-bulk-label' );
 		var $replace       = $( '#unsplash-bulk-replace' );
 
-		var bulkActive     = false;  // true while we are driving AJAX batches
+		var bulkActive     = false;
 		var pollTimer      = null;
 		var countdownTimer = null;
 
-		// On page load restore any job that was already running/paused.
-		fetchStatus( function ( data ) {
+		// Restore any running/paused job on page load.
+		fetchBulkStatus( function ( data ) {
 			if ( data && data.status && 'idle' !== data.status ) {
-				applyStatus( data );
+				applyBulkStatus( data );
 				if ( 'paused' === data.status ) {
 					startPoll( 30000 );
 				}
 			}
-		} );
+		});
 
-		// ------- Run Now -------
 		$startBtn.on( 'click', function () {
 			if ( bulkActive ) return;
 			bulkActive = true;
 			stopPoll();
 			$startBtn.prop( 'disabled', true );
 			$cancelBtn.show().prop( 'disabled', false );
-			$status.show();
+			$bulkStatus.show();
 			setBar( 0 );
 			setLabel( unsplashAdmin.i18n.bulkStarting );
 
@@ -92,10 +302,10 @@
 					if ( ! response || ! response.success || ! response.data ) {
 						setLabel( unsplashAdmin.i18n.bulkError );
 						bulkActive = false;
-						resetUI();
+						resetBulkUI();
 						return;
 					}
-					applyStatus( response.data );
+					applyBulkStatus( response.data );
 					if ( 'running' === response.data.status ) {
 						runNextBatch();
 					}
@@ -103,12 +313,11 @@
 				error: function () {
 					setLabel( unsplashAdmin.i18n.bulkError );
 					bulkActive = false;
-					resetUI();
-				}
+					resetBulkUI();
+				},
 			});
-		} );
+		});
 
-		// ------- Cancel -------
 		$cancelBtn.on( 'click', function () {
 			bulkActive = false;
 			stopPoll();
@@ -122,15 +331,13 @@
 				complete: function () {
 					setLabel( unsplashAdmin.i18n.bulkCancelled );
 					setBar( 0 );
-					resetUI();
-				}
+					resetBulkUI();
+				},
 			});
-		} );
+		});
 
-		// ------- Core batch loop (JS-driven) -------
 		function runNextBatch() {
 			if ( ! bulkActive ) return;
-
 			$.ajax({
 				url:    unsplashAdmin.ajaxUrl,
 				method: 'POST',
@@ -140,53 +347,49 @@
 					if ( ! response || ! response.success || ! response.data ) {
 						setLabel( unsplashAdmin.i18n.bulkError );
 						bulkActive = false;
-						resetUI();
+						resetBulkUI();
 						return;
 					}
-					applyStatus( response.data );
+					applyBulkStatus( response.data );
 					if ( 'running' === response.data.status ) {
-						runNextBatch(); // chain immediately until paused or complete
+						runNextBatch();
 					}
 				},
 				error: function () {
 					if ( ! bulkActive ) return;
 					setLabel( unsplashAdmin.i18n.bulkError );
 					bulkActive = false;
-					resetUI();
-				}
+					resetBulkUI();
+				},
 			});
 		}
 
-		// ------- Apply status to UI -------
-		function applyStatus( data ) {
-			var s     = data.status || 'idle';
-			var done  = ( data.processed || 0 ) + ( data.errors || 0 );
-			var total = data.total || 0;
-			var pct   = total > 0 ? Math.min( 100, Math.round( done / total * 100 ) ) : 0;
+		function applyBulkStatus( data ) {
+			var s    = data.status || 'idle';
+			var done = ( data.processed || 0 ) + ( data.errors || 0 );
+			var tot  = data.total || 0;
+			var pct  = tot > 0 ? Math.min( 100, Math.round( done / tot * 100 ) ) : 0;
 
 			setBar( pct );
-			$status.show();
+			$bulkStatus.show();
 
 			if ( 'complete' === s ) {
 				bulkActive = false;
 				stopPoll();
 				setBar( 100 );
 				setLabel( unsplashAdmin.i18n.bulkDone + ' ' + summaryText( data ) );
-				resetUI();
-
+				resetBulkUI();
 			} else if ( 'cancelled' === s ) {
 				bulkActive = false;
 				stopPoll();
 				setLabel( unsplashAdmin.i18n.bulkCancelled + ' ' + summaryText( data ) );
-				resetUI();
-
+				resetBulkUI();
 			} else if ( 'paused' === s ) {
 				bulkActive = false;
 				$startBtn.prop( 'disabled', true );
 				$cancelBtn.show().prop( 'disabled', false );
 				startCountdown( data.next_run_at || 0 );
 				startPoll( 30000 );
-
 			} else if ( 'running' === s ) {
 				$startBtn.prop( 'disabled', true );
 				$cancelBtn.show().prop( 'disabled', false );
@@ -194,46 +397,37 @@
 			}
 		}
 
-		// ------- Countdown while paused -------
 		function startCountdown( nextRunAt ) {
-			if ( countdownTimer ) {
-				clearInterval( countdownTimer );
-				countdownTimer = null;
-			}
-
+			if ( countdownTimer ) { clearInterval( countdownTimer ); countdownTimer = null; }
 			function tick() {
 				var secs = Math.max( 0, nextRunAt - Math.floor( Date.now() / 1000 ) );
-				var m    = Math.floor( secs / 60 );
-				var s    = secs % 60;
+				var m = Math.floor( secs / 60 );
+				var s = secs % 60;
 				setLabel( unsplashAdmin.i18n.bulkPaused
 					.replace( '{m}', m )
 					.replace( '{s}', s < 10 ? '0' + s : String( s ) ) );
-
 				if ( 0 === secs ) {
 					clearInterval( countdownTimer );
 					countdownTimer = null;
 					setLabel( unsplashAdmin.i18n.bulkResuming );
-					// Poll more often once the window should have reset.
 					stopPoll();
 					startPoll( 10000 );
 				}
 			}
-
 			tick();
 			countdownTimer = setInterval( tick, 1000 );
 		}
 
-		// ------- Polling (used while paused) -------
 		function startPoll( ms ) {
 			stopPoll();
-			pollTimer = setInterval( function () {
-				fetchStatus( function ( data ) {
+			pollTimer = setInterval(function () {
+				fetchBulkStatus(function ( data ) {
 					if ( ! data ) return;
-					applyStatus( data );
+					applyBulkStatus( data );
 					if ( 'complete' === data.status || 'cancelled' === data.status ) {
 						stopPoll();
 					}
-				} );
+				});
 			}, ms );
 		}
 
@@ -242,19 +436,18 @@
 			if ( countdownTimer ) { clearInterval( countdownTimer ); countdownTimer = null; }
 		}
 
-		function fetchStatus( callback ) {
+		function fetchBulkStatus( callback ) {
 			$.ajax({
 				url:    unsplashAdmin.ajaxUrl,
 				method: 'POST',
 				data:   { action: 'unsplash_bulk_status', nonce: unsplashAdmin.nonce },
 				success: function ( response ) {
 					callback( ( response && response.success ) ? response.data : null );
-				}
+				},
 			});
 		}
 
-		// ------- UI helpers -------
-		function resetUI() {
+		function resetBulkUI() {
 			$startBtn.prop( 'disabled', false );
 			$cancelBtn.hide().prop( 'disabled', false );
 		}

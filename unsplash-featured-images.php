@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'UNSPLASH_FI_VERSION', '1.0.2' );
+define( 'UNSPLASH_FI_VERSION', '1.1.0' );
 define( 'UNSPLASH_FI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -33,6 +33,9 @@ final class Unsplash_Featured_Images {
 
 	/** @var Unsplash_API */
 	public $api;
+
+	/** @var Source_Manager */
+	public $source_manager;
 
 	/** @var Image_Handler */
 	public $image_handler;
@@ -69,6 +72,9 @@ final class Unsplash_Featured_Images {
 	private function load_dependencies() {
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-activity-logger.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-unsplash-api.php';
+		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-pexels-api.php';
+		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-pixabay-api.php';
+		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-source-manager.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-keyword-generator.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-image-handler.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-image-filters.php';
@@ -80,18 +86,28 @@ final class Unsplash_Featured_Images {
 	}
 
 	private function init_core() {
-		$this->logger            = new Activity_Logger();
-		$this->api               = new Unsplash_API( $this->logger );
+		$this->logger  = new Activity_Logger();
+		$this->api     = new Unsplash_API( $this->logger );
+		$pexels_api    = new Pexels_API( $this->logger );
+		$pixabay_api   = new Pixabay_API( $this->logger );
+		$this->source_manager = new Source_Manager(
+			array(
+				'unsplash' => $this->api,
+				'pexels'   => $pexels_api,
+				'pixabay'  => $pixabay_api,
+			),
+			$this->logger
+		);
 		$this->keyword_generator = new Keyword_Generator();
 		$this->image_filters     = new Image_Filters();
-		$this->image_handler     = new Image_Handler( $this->api, $this->logger );
+		$this->image_handler     = new Image_Handler( $this->source_manager, $this->logger );
 		$this->scheduler         = new Scheduler( $this->image_handler, $this->keyword_generator, $this->logger );
 	}
 
 	public function init_admin() {
-		new Unsplash_Settings( $this->api );
-		new Unsplash_Meta_Box( $this->api, $this->keyword_generator, $this->image_handler );
-		new Unsplash_Actions( $this->api, $this->image_handler, $this->keyword_generator, $this->logger );
+		new Unsplash_Settings( $this->source_manager );
+		new Unsplash_Meta_Box( $this->source_manager, $this->keyword_generator, $this->image_handler );
+		new Unsplash_Actions( $this->source_manager, $this->image_handler, $this->keyword_generator, $this->logger );
 		new Bulk_Processor( $this->image_handler, $this->keyword_generator, $this->logger );
 	}
 
@@ -108,6 +124,15 @@ final class Unsplash_Featured_Images {
 			'unsplash_image_content_filter'  => 'low',
 			'unsplash_image_min_width'       => 0,
 			'unsplash_image_min_height'      => 0,
+			// v1.1.0 multi-source.
+			'pexels_api_key'                 => '',
+			'pixabay_api_key'                => '',
+			'unsplash_source_priority'       => 'unsplash,pexels,pixabay',
+			'pexels_rate_limit_remaining'    => 200,
+			'pexels_rate_limit_total'        => 200,
+			'pixabay_rate_limit_remaining'   => 5000,
+			'pixabay_rate_limit_total'       => 5000,
+			'unsplash_keyword_mode'          => 'title',
 		);
 
 		foreach ( $defaults as $key => $value ) {

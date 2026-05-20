@@ -120,13 +120,6 @@ class Bulk_Processor {
 				break;
 			}
 
-			// Rate-limit guard — check after at least one attempt so a fresh cron
-			// run always tries at least once (updates the cached remaining count).
-			if ( $attempted > 0 && $plugin->api->is_rate_limited() ) {
-				$rate_limited = true;
-				break;
-			}
-
 			$post_id = array_shift( $queue['post_ids'] );
 
 			// Free skip — does not count towards the batch limit.
@@ -141,12 +134,12 @@ class Bulk_Processor {
 			$orientation    = get_option( 'unsplash_image_orientation', '' );
 			$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 
-			$results = $plugin->api->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
+			$results = $plugin->source_manager->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
 
 			if ( is_wp_error( $results ) ) {
 				$err = $results->get_error_code();
-				if ( 'rate_limited' === $err || false !== strpos( $err, '429' ) ) {
-					// Put the post back — it hasn't been processed.
+				if ( 'rate_limited' === $err || false !== strpos( $err, '429' ) || 'no_sources' === $err ) {
+					// All sources exhausted — put the post back and pause.
 					array_unshift( $queue['post_ids'], $post_id );
 					$rate_limited = true;
 					break;
@@ -164,8 +157,11 @@ class Bulk_Processor {
 				continue;
 			}
 
-			$photo_id      = sanitize_text_field( $results['results'][0]['id'] );
-			$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace_existing );
+			$photo       = $results['results'][0];
+			$photo_id    = sanitize_text_field( $photo['id'] );
+			$source_slug = sanitize_key( $photo['source'] ?? 'unsplash' );
+
+			$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace_existing, $source_slug );
 
 			if ( is_wp_error( $attachment_id ) ) {
 				$queue['errors']++;
@@ -174,7 +170,8 @@ class Bulk_Processor {
 				$queue['processed']++;
 				update_post_meta( $post_id, '_unsplash_last_keyword', sanitize_text_field( $keyword ) );
 				update_post_meta( $post_id, '_unsplash_assignment_method', 'bulk' );
-				$this->logger->log_action( 'image_assigned', $post_id, array( 'keyword' => $keyword, 'source' => 'bulk' ), 'success' );
+				update_post_meta( $post_id, '_fp_photo_source', $source_slug );
+				$this->logger->log_action( 'image_assigned', $post_id, array( 'keyword' => $keyword, 'source' => $source_slug ), 'success' );
 			}
 
 			update_option( self::QUEUE_OPTION, $queue, false );
@@ -251,7 +248,7 @@ class Bulk_Processor {
 		// Clear the cached remaining-count so the first request of this window
 		// isn't pre-blocked and actually gets fresh headers from the API.
 		$plugin = Unsplash_Featured_Images::get_instance();
-		$plugin->api->reset_rate_limit_tracking();
+		$plugin->source_manager->reset_all_rate_limits();
 
 		$this->process_queue_batch( 0 );
 	}
@@ -304,10 +301,11 @@ class Bulk_Processor {
 			$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 			$plugin         = Unsplash_Featured_Images::get_instance();
 
-			$results = $plugin->api->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
+			$results = $plugin->source_manager->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
 
 			if ( is_wp_error( $results ) ) {
-				if ( 'rate_limited' === $results->get_error_code() ) {
+				$err = $results->get_error_code();
+				if ( 'rate_limited' === $err || false !== strpos( $err, '429' ) || 'no_sources' === $err ) {
 					break;
 				}
 				$errors++;
@@ -321,8 +319,11 @@ class Bulk_Processor {
 				continue;
 			}
 
-			$photo_id      = sanitize_text_field( $results['results'][0]['id'] );
-			$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace_existing );
+			$photo       = $results['results'][0];
+			$photo_id    = sanitize_text_field( $photo['id'] );
+			$source_slug = sanitize_key( $photo['source'] ?? 'unsplash' );
+
+			$attachment_id = $this->image_handler->download_and_upload_image( $post_id, $photo_id, $replace_existing, $source_slug );
 
 			if ( is_wp_error( $attachment_id ) ) {
 				$errors++;
@@ -331,7 +332,8 @@ class Bulk_Processor {
 				$processed++;
 				update_post_meta( $post_id, '_unsplash_last_keyword', sanitize_text_field( $keyword ) );
 				update_post_meta( $post_id, '_unsplash_assignment_method', 'bulk' );
-				$this->logger->log_action( 'image_assigned', $post_id, array( 'keyword' => $keyword, 'source' => 'list_bulk' ), 'success' );
+				update_post_meta( $post_id, '_fp_photo_source', $source_slug );
+				$this->logger->log_action( 'image_assigned', $post_id, array( 'keyword' => $keyword, 'source' => $source_slug ), 'success' );
 			}
 
 			$this->set_status( array(

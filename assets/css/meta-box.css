@@ -1,5 +1,5 @@
 /* ============================================================
-   Unsplash controls — injected inside the native Featured Image box
+   FeaturedPilot — Meta Box Styles  (v1.1.0)
    ============================================================ */
 
 .unsplash-fi__divider {
@@ -14,7 +14,7 @@
     font-weight: 600;
     text-transform: uppercase;
     color: #646970;
-    letter-spacing: 0.04em;
+    letter-spacing: .04em;
 }
 
 /* Keyword input */
@@ -23,12 +23,49 @@
     font-size: 12px !important;
 }
 
-/* Button row */
+/* ============================================================
+   Source pill selector
+   ============================================================ */
+
+.unsplash-fi__source-pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-bottom: 8px;
+}
+
+.fp-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 3px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid #c3c4c7;
+    border-radius: 20px;
+    background: #fff;
+    color: #50575e;
+    cursor: pointer;
+    transition: border-color .12s, background .12s, color .12s;
+}
+
+.fp-pill:hover { border-color: #72aee6; color: #2271b1; }
+
+.fp-pill--active,
+.fp-pill[aria-pressed="true"] {
+    border-color: #2271b1;
+    background: #2271b1;
+    color: #fff;
+}
+
+/* ============================================================
+   Button row
+   ============================================================ */
+
 .unsplash-fi__actions {
     display: flex;
     align-items: center;
     gap: 6px;
-    margin-bottom: 6px;
+    margin-bottom: 8px;
 }
 
 .unsplash-fi__spinner {
@@ -37,11 +74,107 @@
     visibility: hidden;
 }
 
-.unsplash-fi__spinner.is-active {
-    visibility: visible;
+.unsplash-fi__spinner.is-active { visibility: visible; }
+
+/* ============================================================
+   Preview Grid
+   ============================================================ */
+
+.unsplash-fi__preview-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+    margin-bottom: 8px;
 }
 
-/* Status area */
+.unsplash-fi__preview-grid:empty { display: none; }
+
+.fp-preview-card {
+    position: relative;
+    border: 2px solid #dcdcde;
+    border-radius: 4px;
+    overflow: hidden;
+    cursor: pointer;
+    transition: border-color .15s, box-shadow .15s;
+}
+
+.fp-preview-card:hover {
+    border-color: #2271b1;
+    box-shadow: 0 2px 8px rgba(34,113,177,.2);
+}
+
+.fp-preview-card img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 4/3;
+    object-fit: cover;
+}
+
+.fp-preview-card__footer {
+    padding: 4px 6px;
+    background: #f6f7f7;
+    border-top: 1px solid #dcdcde;
+}
+
+.fp-preview-card__credit {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 10px;
+    color: #646970;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+.fp-preview-card__credit a {
+    color: inherit;
+    text-decoration: none;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.fp-preview-card__credit a:hover { color: #2271b1; }
+
+.fp-source-badge {
+    display: inline-block;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+    flex-shrink: 0;
+}
+
+.fp-source-badge--unsplash { background: #1a1a1a; color: #fff; }
+.fp-source-badge--pexels   { background: #05a081; color: #fff; }
+.fp-source-badge--pixabay  { background: #2ec66e; color: #fff; }
+
+.fp-preview-card__use {
+    display: block;
+    width: 100%;
+    padding: 5px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    background: #2271b1;
+    color: #fff;
+    border: none;
+    cursor: pointer;
+    transition: background .12s;
+}
+
+.fp-preview-card__use:hover { background: #135e96; color: #fff; }
+
+.fp-preview-card__use.is-loading {
+    opacity: .7;
+    cursor: wait;
+}
+
+/* ============================================================
+   Status area
+   ============================================================ */
+
 .unsplash-fi__status {
     padding: 5px 8px;
     border-radius: 3px;
@@ -68,7 +201,7 @@
     color: #2271b1;
 }
 
-/* Last-used keyword note */
+/* Last-used note */
 .unsplash-fi__meta {
     font-size: 11px;
     color: #646970;
@@ -83,6 +216,4 @@
     margin-top: 6px;
 }
 
-.unsplash-fi__skip input[type="checkbox"] {
-    margin-right: 4px;
-}
+.unsplash-fi__skip input[type="checkbox"] { margin-right: 4px; }

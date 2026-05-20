@@ -154,6 +154,13 @@ class Activity_Logger {
 	}
 
 	/**
+	 * Delete all log entries unconditionally.
+	 */
+	public function clear_all_logs() {
+		update_option( self::OPTION_KEY, array(), false );
+	}
+
+	/**
 	 * Delete a single log entry by its ID.
 	 *
 	 * @param string $log_id

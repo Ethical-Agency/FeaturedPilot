@@ -1,0 +1,31 @@
+# Dependencies
+vendor/
+node_modules/
+
+# Build artefacts
+*.min.js
+*.min.css
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/
+.idea/
+*.sublime-project
+*.sublime-workspace
+
+# WordPress
+wp-config.php
+
+# Logs & temp
+*.log
+*.tmp
+*.cache
+
+# Environment / secrets
+.env
+.env.*
+secrets.php
