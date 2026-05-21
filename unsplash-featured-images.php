@@ -2,8 +2,8 @@
 /**
  * Plugin Name:       FeaturedPilot
  * Plugin URI:        https://github.com/Ethical-Agency/FeaturedPilot
- * Description:       Automatically assigns featured images from Unsplash, Pexels, or Pixabay with priority-order fallback, tabbed settings, live rate gauges, and a meta-box preview grid.
- * Version:           1.1.1
+ * Description:       Automatically assigns featured images from Unsplash, Pexels, Pixabay, or Freepik with priority-order fallback, optional Magnific AI upscaling, tabbed settings, live rate gauges, and a meta-box preview grid.
+ * Version:           1.2.0
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            The Ethical Agency
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'UNSPLASH_FI_VERSION', '1.1.1' );
+define( 'UNSPLASH_FI_VERSION', '1.2.0' );
 define( 'UNSPLASH_FI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -52,6 +52,9 @@ final class Unsplash_Featured_Images {
 	/** @var Scheduler */
 	public $scheduler;
 
+	/** @var Magnific_API */
+	public $magnific;
+
 	public static function get_instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -74,6 +77,8 @@ final class Unsplash_Featured_Images {
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-unsplash-api.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-pexels-api.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-pixabay-api.php';
+		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-freepik-api.php';
+		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-magnific-api.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-source-manager.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-keyword-generator.php';
 		require_once UNSPLASH_FI_PLUGIN_DIR . 'includes/class-image-handler.php';
@@ -86,21 +91,26 @@ final class Unsplash_Featured_Images {
 	}
 
 	private function init_core() {
-		$this->logger  = new Activity_Logger();
-		$this->api     = new Unsplash_API( $this->logger );
-		$pexels_api    = new Pexels_API( $this->logger );
-		$pixabay_api   = new Pixabay_API( $this->logger );
+		$this->logger    = new Activity_Logger();
+		$this->api       = new Unsplash_API( $this->logger );
+		$pexels_api      = new Pexels_API( $this->logger );
+		$pixabay_api     = new Pixabay_API( $this->logger );
+		$freepik_api     = new Freepik_API( $this->logger );
+		$this->magnific  = new Magnific_API( $this->logger );
+
 		$this->source_manager = new Source_Manager(
 			array(
 				'unsplash' => $this->api,
 				'pexels'   => $pexels_api,
 				'pixabay'  => $pixabay_api,
+				'freepik'  => $freepik_api,
 			),
 			$this->logger
 		);
+
 		$this->keyword_generator = new Keyword_Generator();
 		$this->image_filters     = new Image_Filters();
-		$this->image_handler     = new Image_Handler( $this->source_manager, $this->logger );
+		$this->image_handler     = new Image_Handler( $this->source_manager, $this->logger, $this->magnific );
 		$this->scheduler         = new Scheduler( $this->image_handler, $this->keyword_generator, $this->logger );
 	}
 
@@ -112,7 +122,6 @@ final class Unsplash_Featured_Images {
 	}
 
 	public static function activate() {
-		// Create default options on first activation.
 		$defaults = array(
 			'unsplash_schedule_enabled'      => '0',
 			'unsplash_schedule_frequency'    => 'daily',
@@ -127,12 +136,19 @@ final class Unsplash_Featured_Images {
 			// v1.1.0 multi-source.
 			'pexels_api_key'                 => '',
 			'pixabay_api_key'                => '',
-			'unsplash_source_priority'       => 'unsplash,pexels,pixabay',
+			'unsplash_source_priority'       => 'unsplash,pexels,pixabay,freepik',
 			'pexels_rate_limit_remaining'    => 200,
 			'pexels_rate_limit_total'        => 200,
 			'pixabay_rate_limit_remaining'   => 5000,
 			'pixabay_rate_limit_total'       => 5000,
 			'unsplash_keyword_mode'          => 'title',
+			// v1.2.0 Freepik + Magnific.
+			'freepik_api_key'                => '',
+			'freepik_rate_limit_remaining'   => 100,
+			'freepik_rate_limit_total'       => 100,
+			'magnific_api_key'               => '',
+			'magnific_upscale_enabled'       => '0',
+			'magnific_scale_factor'          => '2',
 		);
 
 		foreach ( $defaults as $key => $value ) {
@@ -143,7 +159,6 @@ final class Unsplash_Featured_Images {
 	}
 
 	public static function deactivate() {
-		// Clear scheduled cron events.
 		wp_clear_scheduled_hook( 'unsplash_daily_update' );
 		wp_clear_scheduled_hook( 'unsplash_weekly_update' );
 	}

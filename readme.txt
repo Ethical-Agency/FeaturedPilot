@@ -1,10 +1,10 @@
 === FeaturedPilot ===
 Contributors: theethicalagency
-Tags: featured image, unsplash, pexels, pixabay, automatic, media, stock photos
+Tags: featured image, unsplash, pexels, pixabay, freepik, magnific, automatic, media, stock photos, ai upscaling
 Requires at least: 5.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.1.1
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -23,6 +23,7 @@ live 3-image preview grid right inside the post editor.
 * **Unsplash** — 50 req/hr (free tier) · Client-ID header auth
 * **Pexels** — 200 req/hr (free tier) · Authorization header auth
 * **Pixabay** — ~5,000 req/hr (free tier) · API key query param
+* **Freepik** — 100 req/day (free tier) · X-Freepik-API-Key header · free-licensed content only
 
 When your top source hits its rate limit the next source in your priority order
 takes over automatically. Drag the source rows into your preferred order from
@@ -119,6 +120,14 @@ The error is logged and the scheduler pauses. It automatically retries after the
 reset window. The rate gauge turns red so you can see it at a glance.
 
 == Changelog ==
+
+= 1.2.0 =
+* New: Freepik stock photos as a 4th search source (100 req/day free plan,
+  free-licensed content only via filters[license][free]=1)
+* New: Magnific AI upscaling — optional step that enhances images before
+  upload; falls back to original on failure
+* New: Magnific settings card (API key, enable toggle, 2×/4× scale factor)
+* New: FREEPIK_API_KEY and MAGNIFIC_API_KEY wp-config.php constants
 
 = 1.1.1 =
 * Fix: version bump to bust browser cache on admin.js after the per-source

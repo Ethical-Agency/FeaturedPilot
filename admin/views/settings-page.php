@@ -17,11 +17,13 @@ $source_labels = array(
 	'unsplash' => 'Unsplash',
 	'pexels'   => 'Pexels',
 	'pixabay'  => 'Pixabay',
+	'freepik'  => 'Freepik',
 );
 $source_descriptions = array(
 	'unsplash' => __( '50 req/hr (demo) · Client-ID header', 'unsplash-featured-images' ),
 	'pexels'   => __( '200 req/hr · Authorization header', 'unsplash-featured-images' ),
 	'pixabay'  => __( '~5 000 req/hr · API key param', 'unsplash-featured-images' ),
+	'freepik'  => __( '100 req/day (free) · X-Freepik-API-Key header', 'unsplash-featured-images' ),
 );
 
 if ( ! function_exists( 'fp_gauge_class' ) ) {
@@ -118,7 +120,7 @@ if ( ! function_exists( 'fp_gauge_class' ) ) {
 			</div>
 
 			<!-- Per-Source API Cards -->
-			<?php foreach ( array( 'unsplash', 'pexels', 'pixabay' ) as $slug ) :
+			<?php foreach ( array( 'unsplash', 'pexels', 'pixabay', 'freepik' ) as $slug ) :
 				$opt_key   = $slug . '_api_key';
 				$raw_key   = get_option( $opt_key, '' );
 				$masked    = $settings->mask_key( $raw_key );
@@ -408,6 +410,73 @@ if ( ! function_exists( 'fp_gauge_class' ) ) {
 						</td>
 					</tr>
 				</table>
+			</div>
+
+			<!-- Magnific AI Enhancement -->
+			<div class="fp-source-card" id="fp-source-card-magnific">
+				<div class="fp-source-card__header">
+					<h2 class="fp-source-card__title"><?php esc_html_e( 'Magnific AI Enhancement', 'unsplash-featured-images' ); ?></h2>
+					<span class="fp-source-card__hint"><?php esc_html_e( 'AI upscaling by Freepik · same API key as Freepik · optional post-processing step', 'unsplash-featured-images' ); ?></span>
+				</div>
+
+				<div class="fp-source-card__body">
+					<p class="fp-card__desc">
+						<?php esc_html_e( 'When enabled, each fetched image is sent to Magnific for AI upscaling before it is saved to the Media Library. If upscaling fails or times out the original image is used instead.', 'unsplash-featured-images' ); ?>
+					</p>
+
+					<!-- Magnific API Key -->
+					<div class="fp-source-card__key-row">
+						<label for="magnific_api_key" class="fp-label">
+							<?php esc_html_e( 'API Key', 'unsplash-featured-images' ); ?>
+						</label>
+						<div class="fp-source-card__key-wrap">
+							<?php
+							$magnific_raw    = get_option( 'magnific_api_key', '' );
+							$magnific_masked = $settings->mask_key( $magnific_raw );
+							?>
+							<input type="password"
+								   name="magnific_api_key"
+								   id="magnific_api_key"
+								   value="<?php echo esc_attr( $magnific_raw ); ?>"
+								   class="regular-text"
+								   autocomplete="new-password"
+								   placeholder="<?php echo esc_attr( ! empty( $magnific_raw ) ? $magnific_masked : __( 'Paste your Freepik/Magnific API key…', 'unsplash-featured-images' ) ); ?>" />
+							<button type="button"
+									class="button fp-test-btn"
+									data-source="magnific">
+								<?php esc_html_e( 'Test', 'unsplash-featured-images' ); ?>
+							</button>
+							<span class="fp-test-result" aria-live="polite"></span>
+						</div>
+					</div>
+
+					<!-- Enable toggle -->
+					<div class="fp-source-card__key-row" style="margin-top:12px;">
+						<label class="fp-label"><?php esc_html_e( 'Enable', 'unsplash-featured-images' ); ?></label>
+						<div>
+							<label>
+								<input type="checkbox"
+									   name="magnific_upscale_enabled"
+									   id="magnific_upscale_enabled"
+									   value="1"
+									   <?php checked( 1, get_option( 'magnific_upscale_enabled', 0 ) ); ?> />
+								<?php esc_html_e( 'Upscale every assigned image with Magnific AI', 'unsplash-featured-images' ); ?>
+							</label>
+						</div>
+					</div>
+
+					<!-- Scale factor -->
+					<div class="fp-source-card__key-row" style="margin-top:12px;">
+						<label for="magnific_scale_factor" class="fp-label"><?php esc_html_e( 'Scale Factor', 'unsplash-featured-images' ); ?></label>
+						<div>
+							<select name="magnific_scale_factor" id="magnific_scale_factor">
+								<option value="2" <?php selected( 2, (int) get_option( 'magnific_scale_factor', 2 ) ); ?>>2× <?php esc_html_e( '(recommended)', 'unsplash-featured-images' ); ?></option>
+								<option value="4" <?php selected( 4, (int) get_option( 'magnific_scale_factor', 2 ) ); ?>>4×</option>
+							</select>
+							<p class="description"><?php esc_html_e( 'Higher scale factors use more API credits and take longer to process.', 'unsplash-featured-images' ); ?></p>
+						</div>
+					</div>
+				</div>
 			</div>
 
 			<?php submit_button( __( 'Save Image Settings', 'unsplash-featured-images' ) ); ?>

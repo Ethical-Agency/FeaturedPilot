@@ -11,8 +11,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 class Source_Manager {
 
 	const PRIORITY_OPTION   = 'unsplash_source_priority';
-	const KNOWN_SOURCES     = array( 'unsplash', 'pexels', 'pixabay' );
-	const DEFAULT_PRIORITY  = 'unsplash,pexels,pixabay';
+	const KNOWN_SOURCES     = array( 'unsplash', 'pexels', 'pixabay', 'freepik' );
+	const DEFAULT_PRIORITY  = 'unsplash,pexels,pixabay,freepik';
 
 	/** @var array  Keyed by slug: ['unsplash' => Unsplash_API, ...] */
 	private $sources;
@@ -196,6 +196,9 @@ class Source_Manager {
 			case 'pixabay':
 				return ( defined( 'PIXABAY_API_KEY' ) && ! empty( PIXABAY_API_KEY ) )
 					|| '' !== get_option( 'pixabay_api_key', '' );
+			case 'freepik':
+				return ( defined( 'FREEPIK_API_KEY' ) && ! empty( FREEPIK_API_KEY ) )
+					|| '' !== get_option( 'freepik_api_key', '' );
 		}
 		return false;
 	}

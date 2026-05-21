@@ -17,9 +17,13 @@ class Image_Handler {
 	/** @var Activity_Logger */
 	private $logger;
 
-	public function __construct( Source_Manager $source_manager, Activity_Logger $logger ) {
+	/** @var Magnific_API */
+	private $magnific;
+
+	public function __construct( Source_Manager $source_manager, Activity_Logger $logger, Magnific_API $magnific = null ) {
 		$this->source_manager = $source_manager;
 		$this->logger         = $logger;
+		$this->magnific       = $magnific;
 	}
 
 	// -------------------------------------------------------------------------
@@ -56,6 +60,16 @@ class Image_Handler {
 		if ( is_wp_error( $image_url ) ) {
 			$this->logger->log_error( 'Failed to get download URL: ' . $image_url->get_error_message(), $post_id );
 			return $image_url;
+		}
+
+		// Optionally upscale via Magnific — fall back to original URL on any failure.
+		if ( $this->magnific && $this->magnific->is_enabled() ) {
+			$upscaled = $this->magnific->upscale_image( $image_url, $this->magnific->get_scale_factor() );
+			if ( ! is_wp_error( $upscaled ) ) {
+				$image_url = $upscaled;
+			} else {
+				$this->logger->log_error( 'Magnific upscale failed (using original): ' . $upscaled->get_error_message(), $post_id );
+			}
 		}
 
 		// Download to temp file.
@@ -184,13 +198,61 @@ class Image_Handler {
 	 * @return string|WP_Error  Local temp file path.
 	 */
 	private function download_file( $url ) {
+		// Validate URL is an external http/https address before fetching.
+		$safe = $this->validate_remote_url( $url );
+		if ( is_wp_error( $safe ) ) {
+			return $safe;
+		}
+
 		require_once ABSPATH . 'wp-admin/includes/file.php';
 
-		$tmp = download_url( esc_url_raw( $url ), 30 );
+		$tmp = download_url( $safe, 30 );
 		if ( is_wp_error( $tmp ) ) {
 			return $tmp;
 		}
 		return $tmp;
+	}
+
+	/**
+	 * Ensure a URL is a safe, public http/https address.
+	 * Rejects private/loopback ranges and non-http schemes to prevent SSRF.
+	 *
+	 * @param string $url
+	 * @return string|WP_Error  Sanitized URL on success.
+	 */
+	private function validate_remote_url( $url ) {
+		$url = esc_url_raw( trim( $url ) );
+
+		if ( empty( $url ) ) {
+			return new WP_Error( 'invalid_url', __( 'Empty image URL.', 'unsplash-featured-images' ) );
+		}
+
+		$parsed = wp_parse_url( $url );
+		if ( ! $parsed || ! isset( $parsed['scheme'], $parsed['host'] ) ) {
+			return new WP_Error( 'invalid_url', __( 'Malformed image URL.', 'unsplash-featured-images' ) );
+		}
+
+		if ( ! in_array( strtolower( $parsed['scheme'] ), array( 'http', 'https' ), true ) ) {
+			return new WP_Error( 'invalid_url', __( 'Image URL must use http or https.', 'unsplash-featured-images' ) );
+		}
+
+		// Resolve host to IP and reject private / loopback ranges.
+		$host = $parsed['host'];
+		$ip   = gethostbyname( $host );
+
+		if ( $ip && filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+			// Block loopback and private ranges.
+			$private = filter_var(
+				$ip,
+				FILTER_VALIDATE_IP,
+				FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE
+			);
+			if ( false === $private ) {
+				return new WP_Error( 'ssrf_blocked', __( 'Image URL resolves to a private or reserved address.', 'unsplash-featured-images' ) );
+			}
+		}
+
+		return $url;
 	}
 
 	/**

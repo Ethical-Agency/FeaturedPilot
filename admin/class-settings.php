@@ -105,8 +105,10 @@ class Unsplash_Settings {
 		register_setting( 'fp_settings_sources', 'pexels_api_key',    array( 'sanitize_callback' => array( $this, 'sanitize_api_key' ), 'default' => '' ) );
 		// Pixabay API key.
 		register_setting( 'fp_settings_sources', 'pixabay_api_key',   array( 'sanitize_callback' => array( $this, 'sanitize_api_key' ), 'default' => '' ) );
+		// Freepik API key.
+		register_setting( 'fp_settings_sources', 'freepik_api_key',   array( 'sanitize_callback' => array( $this, 'sanitize_api_key' ), 'default' => '' ) );
 		// Source priority.
-		register_setting( 'fp_settings_sources', 'unsplash_source_priority', array( 'sanitize_callback' => array( $this, 'sanitize_source_priority' ), 'default' => 'unsplash,pexels,pixabay' ) );
+		register_setting( 'fp_settings_sources', 'unsplash_source_priority', array( 'sanitize_callback' => array( $this, 'sanitize_source_priority' ), 'default' => 'unsplash,pexels,pixabay,freepik' ) );
 
 		// ------ AUTOMATION TAB ------
 		add_settings_section( 'fp_automation', '', null, 'fp-settings-automation' );
@@ -124,6 +126,10 @@ class Unsplash_Settings {
 		register_setting( 'fp_settings_images', 'unsplash_image_content_filter', array( 'sanitize_callback' => array( $this, 'sanitize_content_filter' ), 'default' => 'low' ) );
 		register_setting( 'fp_settings_images', 'unsplash_image_min_width',      array( 'sanitize_callback' => 'absint',                                  'default' => 0 ) );
 		register_setting( 'fp_settings_images', 'unsplash_image_min_height',     array( 'sanitize_callback' => 'absint',                                  'default' => 0 ) );
+		// Magnific AI upscaling.
+		register_setting( 'fp_settings_images', 'magnific_api_key',          array( 'sanitize_callback' => array( $this, 'sanitize_api_key' ), 'default' => '' ) );
+		register_setting( 'fp_settings_images', 'magnific_upscale_enabled',  array( 'sanitize_callback' => 'absint',                          'default' => 0 ) );
+		register_setting( 'fp_settings_images', 'magnific_scale_factor',     array( 'sanitize_callback' => array( $this, 'sanitize_scale_factor' ), 'default' => 2 ) );
 
 		// ------ LOGS TAB ------
 		add_settings_section( 'fp_logs', '', null, 'fp-settings-logs' );
@@ -161,7 +167,7 @@ class Unsplash_Settings {
 	}
 
 	public function sanitize_source_priority( $value ) {
-		$known  = array( 'unsplash', 'pexels', 'pixabay' );
+		$known  = array( 'unsplash', 'pexels', 'pixabay', 'freepik' );
 		$slugs  = array_map( 'trim', explode( ',', (string) $value ) );
 		$valid  = array_filter( $slugs, function( $s ) use ( $known ) {
 			return in_array( $s, $known, true );
@@ -169,6 +175,10 @@ class Unsplash_Settings {
 		// Ensure all known sources present (append missing ones at end).
 		$missing = array_diff( $known, $valid );
 		return implode( ',', array_values( array_merge( $valid, $missing ) ) );
+	}
+
+	public function sanitize_scale_factor( $value ) {
+		return in_array( (int) $value, array( 2, 4 ), true ) ? (int) $value : 2;
 	}
 
 	// -------------------------------------------------------------------------

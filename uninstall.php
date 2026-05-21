@@ -35,6 +35,14 @@ $options = array(
 	'pixabay_api_key',
 	'pixabay_rate_limit_remaining',
 	'pixabay_rate_limit_total',
+	// Freepik
+	'freepik_api_key',
+	'freepik_rate_limit_remaining',
+	'freepik_rate_limit_total',
+	// Magnific
+	'magnific_api_key',
+	'magnific_upscale_enabled',
+	'magnific_scale_factor',
 	// DB version
 	'unsplash_fi_db_version',
 );
@@ -50,6 +58,7 @@ $transients = array(
 	'fp_rate_hits_unsplash',
 	'fp_rate_hits_pexels',
 	'fp_rate_hits_pixabay',
+	'fp_rate_hits_freepik',
 );
 
 foreach ( $transients as $transient ) {

@@ -4,9 +4,9 @@
 
 # FeaturedPilot
 
-**Automatically assign stunning featured images to your WordPress posts — from Unsplash, Pexels, or Pixabay — with smart fallbacks, live rate gauges, and a preview-before-you-set grid.**
+**Automatically assign stunning featured images to your WordPress posts — from Unsplash, Pexels, Pixabay, or Freepik — with smart fallbacks, optional Magnific AI upscaling, live rate gauges, and a preview-before-you-set grid.**
 
-[![Version](https://img.shields.io/badge/version-1.1.1-blue.svg)](https://github.com/Ethical-Agency/FeaturedPilot/releases)
+[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Ethical-Agency/FeaturedPilot/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-GPL%20v2-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
@@ -31,10 +31,18 @@ FeaturedPilot connects to three stock-photo APIs and intelligently picks the bes
 | [Unsplash](https://unsplash.com/developers) | 50 req / hr | `Authorization: Client-ID {key}` |
 | [Pexels](https://www.pexels.com/api/) | 200 req / hr | `Authorization: {key}` |
 | [Pixabay](https://pixabay.com/api/docs/) | ~5,000 req / hr | `key` query parameter |
+| [Freepik](https://docs.freepik.com) | 100 req / day | `X-Freepik-API-Key: {key}` |
 
 - **Priority-order fallback** — if your top source hits its rate limit, the next one takes over automatically
 - **Drag-to-reorder** source priority from the Sources settings tab
 - **Per-source live rate gauge** — colour-coded bar (green / amber / red) updates every 60 seconds
+
+### Magnific AI Upscaling (optional)
+- Toggle on in the **Images** settings tab
+- Each fetched image is sent to Magnific (Freepik's AI upscaling engine) before being saved
+- Choose **2×** or **4×** scale — higher scale uses more API credits and takes longer
+- Uses the same API key as Freepik
+- Graceful fallback: if upscaling fails or times out, the original image is used with an activity log entry
 
 ### Smart Keyword Detection
 Three keyword modes, selectable from a card-style UI:
@@ -113,6 +121,20 @@ Go to **Settings → FeaturedPilot** after activation.
 2. Copy your API key
 3. Paste it into the Pixabay API Key field and click **Test**
 
+#### Freepik
+1. Sign up at [freepik.com](https://www.freepik.com) and visit [freepik.com/api](https://www.freepik.com/api)
+2. Create an API application and copy your key
+3. Paste it into the Freepik API Key field and click **Test**
+4. Free plan gives 100 requests/day — only free-licensed photos are returned
+
+#### Magnific AI Upscaling
+Magnific is Freepik's AI image enhancement engine and uses the **same API key as Freepik**.
+
+1. Enter your Freepik API key in the Magnific API Key field on the **Images** tab
+2. Tick **Upscale every assigned image with Magnific AI**
+3. Choose a scale factor (2× recommended to balance quality vs. speed and credits)
+4. Save — every image assigned from this point forward will be upscaled before upload
+
 #### Source priority
 Drag the source rows into your preferred order. The first connected source is always tried first; the others serve as automatic fallbacks.
 
@@ -124,6 +146,8 @@ You can hard-code API keys as PHP constants (useful for multi-environment setups
 define( 'UNSPLASH_API_KEY', 'your_unsplash_access_key' );
 define( 'PEXELS_API_KEY',   'your_pexels_api_key' );
 define( 'PIXABAY_API_KEY',  'your_pixabay_api_key' );
+define( 'FREEPIK_API_KEY',  'your_freepik_api_key' );
+define( 'MAGNIFIC_API_KEY', 'your_freepik_api_key' ); // same key as Freepik
 ```
 
 ### Automation tab
@@ -168,6 +192,14 @@ Yes — see [Defining keys in wp-config.php](#defining-keys-in-wp-configphp).
 ---
 
 ## Changelog
+
+### 1.2.0 — 2026-05-21
+- New: Freepik stock photo support as a 4th priority source (100 req/day free, only free-licensed content returned)
+- New: Magnific AI upscaling — optional post-processing step that runs every assigned image through Magnific before upload
+- New: Magnific settings card in the Images tab (API key, enable toggle, 2×/4× scale factor)
+- New: `FREEPIK_API_KEY` and `MAGNIFIC_API_KEY` PHP constant overrides
+- New: Freepik and Magnific options cleaned up on plugin delete via `uninstall.php`
+- The Magnific Test button validates the Freepik/Magnific key against the Freepik user endpoint (no upscale credits consumed)
 
 ### 1.1.1 — 2026-05-21
 - Fix: version bump to bust browser cache on `admin.js` after the per-source test-connection refactor in 1.1.0
