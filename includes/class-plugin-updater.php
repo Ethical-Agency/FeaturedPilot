@@ -97,7 +97,20 @@ class FeaturedPilot_Updater {
 				'banners'      => array(),
 			);
 		} else {
-			// Ensure WP doesn't keep showing a stale "update available" notice.
+			// Tell WP the plugin is current so it doesn't re-check on every page load.
+			if ( ! isset( $transient->no_update[ $this->plugin_basename ] ) ) {
+				$transient->no_update[ $this->plugin_basename ] = (object) array(
+					'slug'         => $this->plugin_slug(),
+					'plugin'       => $this->plugin_basename,
+					'new_version'  => $this->current_version,
+					'url'          => '',
+					'package'      => '',
+					'icons'        => array(),
+					'banners'      => array(),
+					'tested'       => '',
+					'requires_php' => '7.4',
+				);
+			}
 			unset( $transient->response[ $this->plugin_basename ] );
 		}
 
