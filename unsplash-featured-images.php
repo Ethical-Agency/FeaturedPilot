@@ -3,7 +3,7 @@
  * Plugin Name:       FeaturedPilot
  * Plugin URI:        https://github.com/Ethical-Agency/FeaturedPilot
  * Description:       Automatically assigns featured images from Unsplash, Pexels, or Pixabay with priority-order fallback, tabbed settings, live rate gauges, and a meta-box preview grid.
- * Version:           1.1.0
+ * Version:           1.1.1
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            The Ethical Agency
@@ -18,7 +18,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'UNSPLASH_FI_VERSION', '1.1.0' );
+define( 'UNSPLASH_FI_VERSION', '1.1.1' );
 define( 'UNSPLASH_FI_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'UNSPLASH_FI_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
