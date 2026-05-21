@@ -199,9 +199,19 @@ class Pixabay_API {
 	 * @return true|WP_Error
 	 */
 	public function is_valid_key() {
-		$api_key = $this->get_api_key();
+		return $this->test_connection( $this->get_api_key() );
+	}
+
+	/**
+	 * Test a specific API key without saving it.
+	 *
+	 * @param string $api_key  Key to test.
+	 * @return true|WP_Error
+	 */
+	public function test_connection( $api_key ) {
+		$api_key = sanitize_text_field( $api_key );
 		if ( empty( $api_key ) ) {
-			return new WP_Error( 'no_api_key', __( 'Pixabay API key is not configured.', 'unsplash-featured-images' ) );
+			return new WP_Error( 'no_api_key', __( 'Please enter an API key to test.', 'unsplash-featured-images' ) );
 		}
 
 		$url = add_query_arg(
@@ -220,10 +230,13 @@ class Pixabay_API {
 
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 200 !== (int) $code ) {
+			if ( 400 === (int) $code ) {
+				return new WP_Error( 'invalid_key', __( 'Invalid API key. Check your credentials at pixabay.com/api/docs.', 'unsplash-featured-images' ) );
+			}
 			return new WP_Error(
-				'invalid_key',
+				'api_error_' . $code,
 				/* translators: %d: HTTP status code */
-				sprintf( __( 'Pixabay API key invalid (HTTP %d).', 'unsplash-featured-images' ), $code )
+				sprintf( __( 'Pixabay API returned HTTP %d.', 'unsplash-featured-images' ), $code )
 			);
 		}
 

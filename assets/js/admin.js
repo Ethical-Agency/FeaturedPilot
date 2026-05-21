@@ -121,12 +121,10 @@
 				url:    unsplashAdmin.ajaxUrl,
 				method: 'POST',
 				data: {
-					action:  'unsplash_update_image',
-					nonce:   unsplashAdmin.nonce,
-					post_id: 0,
-					dry_run: 1,
-					source:  source,
-					key:     keyVal,
+					action: 'fp_test_source',
+					nonce:  unsplashAdmin.nonce,
+					source: source,
+					key:    keyVal,
 				},
 				success: function ( response ) {
 					if ( response && response.success ) {

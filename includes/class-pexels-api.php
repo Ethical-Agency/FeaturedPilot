@@ -156,6 +156,45 @@ class Pexels_API {
 		return true;
 	}
 
+	/**
+	 * Test a specific API key without saving it.
+	 *
+	 * @param string $api_key  Key to test.
+	 * @return true|WP_Error
+	 */
+	public function test_connection( $api_key ) {
+		$api_key = sanitize_text_field( $api_key );
+		if ( empty( $api_key ) ) {
+			return new WP_Error( 'no_api_key', __( 'Please enter an API key to test.', 'unsplash-featured-images' ) );
+		}
+
+		$url = add_query_arg( array( 'per_page' => '1' ), self::API_BASE . '/curated' );
+
+		$response = wp_remote_get(
+			$url,
+			array(
+				'headers' => array(
+					'Authorization' => $api_key,
+				),
+				'timeout' => 15,
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$code = wp_remote_retrieve_response_code( $response );
+		if ( 200 !== (int) $code ) {
+			if ( 401 === (int) $code || 403 === (int) $code ) {
+				return new WP_Error( 'invalid_key', __( 'Invalid API key. Check your credentials at pexels.com/api.', 'unsplash-featured-images' ) );
+			}
+			return new WP_Error( 'api_error_' . $code, sprintf( __( 'Pexels API returned HTTP %d.', 'unsplash-featured-images' ), $code ) );
+		}
+
+		return true;
+	}
+
 	public function get_rate_limit_remaining() {
 		return absint( get_option( self::RATE_LIMIT_OPTION, 200 ) );
 	}

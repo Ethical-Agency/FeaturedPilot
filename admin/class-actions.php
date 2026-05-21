@@ -39,6 +39,7 @@ class Unsplash_Actions {
 		add_action( 'wp_ajax_fp_set_photo',             array( $this, 'ajax_set_photo' ) );
 		add_action( 'wp_ajax_fp_rate_limit_status',     array( $this, 'ajax_rate_limit_status' ) );
 		add_action( 'wp_ajax_fp_clear_logs',            array( $this, 'ajax_clear_logs' ) );
+		add_action( 'wp_ajax_fp_test_source',           array( $this, 'ajax_test_source' ) );
 		// Queue-based bulk run.
 		add_action( 'wp_ajax_unsplash_bulk_init',       array( $this, 'ajax_bulk_init' ) );
 		add_action( 'wp_ajax_unsplash_bulk_process',    array( $this, 'ajax_bulk_process' ) );
@@ -284,6 +285,39 @@ class Unsplash_Actions {
 		$this->verify_user_permissions( 'manage_options' );
 
 		wp_send_json_success( $this->source_manager->get_all_status() );
+	}
+
+	// -------------------------------------------------------------------------
+	// AJAX: test a source API key without saving it
+	// -------------------------------------------------------------------------
+
+	public function ajax_test_source() {
+		$this->verify_ajax_nonce();
+		$this->verify_user_permissions( 'manage_options' );
+
+		$source  = sanitize_key( $_POST['source'] ?? '' );
+		$api_key = sanitize_text_field( wp_unslash( $_POST['key'] ?? '' ) );
+
+		if ( empty( $source ) ) {
+			wp_send_json_error( array( 'message' => __( 'No source specified.', 'unsplash-featured-images' ) ) );
+		}
+
+		if ( empty( $api_key ) ) {
+			wp_send_json_error( array( 'message' => __( 'Please enter an API key to test.', 'unsplash-featured-images' ) ) );
+		}
+
+		$api = $this->source_manager->get_source( $source );
+		if ( ! $api ) {
+			wp_send_json_error( array( 'message' => __( 'Unknown image source.', 'unsplash-featured-images' ) ) );
+		}
+
+		$result = $api->test_connection( $api_key );
+		if ( true === $result ) {
+			wp_send_json_success( array( 'message' => __( 'Connected successfully.', 'unsplash-featured-images' ) ) );
+		} else {
+			$msg = is_wp_error( $result ) ? $result->get_error_message() : __( 'Connection failed.', 'unsplash-featured-images' );
+			wp_send_json_error( array( 'message' => $msg ) );
+		}
 	}
 
 	// -------------------------------------------------------------------------
