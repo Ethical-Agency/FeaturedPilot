@@ -1,9 +1,9 @@
 <?php
 /**
  * Plugin Name:       FeaturedPilot
- * Plugin URI:        https://github.com/theethicalagency/unsplash-featured-images
- * Description:       Automatically assigns Unsplash photos as featured images for WordPress posts.
- * Version:           1.0.0
+ * Plugin URI:        https://github.com/Ethical-Agency/FeaturedPilot
+ * Description:       Automatically assigns featured images from Unsplash, Pexels, or Pixabay with priority-order fallback, tabbed settings, live rate gauges, and a meta-box preview grid.
+ * Version:           1.1.0
  * Requires at least: 5.0
  * Requires PHP:      7.4
  * Author:            The Ethical Agency
