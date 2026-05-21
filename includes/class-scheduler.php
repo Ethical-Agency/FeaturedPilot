@@ -163,9 +163,9 @@ class Scheduler {
 		$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 
 		$plugin  = Unsplash_Featured_Images::get_instance();
-		$results = $plugin->source_manager->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
+		$results = $plugin->source_manager->search_photos( $keyword, 10, 'relevant', $orientation, $content_filter );
 
-		if ( is_wp_error( $results ) || empty( $results['results'][0] ) ) {
+		if ( is_wp_error( $results ) || empty( $results['results'] ) ) {
 			$this->logger->log_error(
 				is_wp_error( $results ) ? $results->get_error_message() : 'No results found.',
 				$post_id,
@@ -174,7 +174,9 @@ class Scheduler {
 			return;
 		}
 
-		$photo       = $results['results'][0];
+		// Prefer unused photo; fall back to top result if the pool is exhausted.
+		$unused = $this->image_handler->filter_unused_photos( $results['results'] );
+		$photo  = ! empty( $unused ) ? $unused[0] : $results['results'][0];
 		$photo_id    = sanitize_text_field( $photo['id'] );
 		$source_slug = sanitize_key( $photo['source'] ?? 'unsplash' );
 

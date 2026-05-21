@@ -174,6 +174,40 @@ class Image_Handler {
 	}
 
 	/**
+	 * Check whether a photo ID + source combination has already been assigned
+	 * as a featured image on any post. Used to avoid serving duplicate images.
+	 *
+	 * @param string $photo_id    Source-native photo ID.
+	 * @param string $source_slug 'unsplash' | 'pexels' | 'pixabay' | 'freepik'.
+	 * @return bool
+	 */
+	public function is_photo_used( $photo_id, $source_slug ) {
+		global $wpdb;
+		$count = $wpdb->get_var( $wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->postmeta} pm1
+			 INNER JOIN {$wpdb->postmeta} pm2 ON pm1.post_id = pm2.post_id
+			 WHERE pm1.meta_key = '_unsplash_photo_id' AND pm1.meta_value = %s
+			   AND pm2.meta_key = '_fp_photo_source'   AND pm2.meta_value = %s",
+			sanitize_text_field( $photo_id ),
+			sanitize_key( $source_slug )
+		) );
+		return (int) $count > 0;
+	}
+
+	/**
+	 * Filter a photo results array to remove any photos already used on other posts.
+	 * Preserves ordering; re-indexes keys.
+	 *
+	 * @param array $photos  Normalized photo objects from a source adapter.
+	 * @return array  Only photos not yet assigned anywhere.
+	 */
+	public function filter_unused_photos( array $photos ) {
+		return array_values( array_filter( $photos, function ( $photo ) {
+			return ! $this->is_photo_used( $photo['id'] ?? '', $photo['source'] ?? '' );
+		} ) );
+	}
+
+	/**
 	 * Remove the current featured image (and its Unsplash meta) from a post.
 	 *
 	 * @param int $post_id

@@ -4,7 +4,7 @@ Tags: featured image, unsplash, pexels, pixabay, freepik, magnific, automatic, m
 Requires at least: 5.0
 Tested up to: 6.7
 Requires PHP: 7.4
-Stable tag: 1.2.0
+Stable tag: 1.2.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -120,6 +120,12 @@ The error is logged and the scheduler pauses. It automatically retries after the
 reset window. The rate gauge turns red so you can see it at a glance.
 
 == Changelog ==
+
+= 1.2.1 =
+* New: No-repeat image enforcement — each photo ID + source pair is tracked in
+  post meta; all automated and manual assignments now skip photos already used
+  on another post, falling back to the top result only when the pool is exhausted.
+  The preview grid in the post editor also shows unused photos first.
 
 = 1.2.0 =
 * New: Freepik stock photos as a 4th search source (100 req/day free plan,

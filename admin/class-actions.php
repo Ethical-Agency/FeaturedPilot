@@ -96,16 +96,18 @@ class Unsplash_Actions {
 		$orientation    = get_option( 'unsplash_image_orientation', '' );
 		$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 
-		$results = $this->source_manager->search_photos( $keyword, 1, 'relevant', $orientation, $content_filter );
+		$results = $this->source_manager->search_photos( $keyword, 10, 'relevant', $orientation, $content_filter );
 		if ( is_wp_error( $results ) ) {
 			wp_send_json_error( array( 'message' => $results->get_error_message() ) );
 		}
 
-		if ( empty( $results['results'][0] ) ) {
+		if ( empty( $results['results'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'No photos found for this keyword.', 'unsplash-featured-images' ) ) );
 		}
 
-		$photo       = $results['results'][0];
+		// Use first unused photo; fall back to top result only if the pool is exhausted.
+		$unused      = $this->image_handler->filter_unused_photos( $results['results'] );
+		$photo       = ! empty( $unused ) ? $unused[0] : $results['results'][0];
 		$photo_id    = sanitize_text_field( $photo['id'] );
 		$source_slug = sanitize_key( $photo['source'] ?? 'unsplash' );
 
@@ -152,24 +154,29 @@ class Unsplash_Actions {
 		$orientation    = get_option( 'unsplash_image_orientation', '' );
 		$content_filter = get_option( 'unsplash_image_content_filter', 'low' );
 
-		// If a specific source is requested, use it directly; otherwise use priority order.
+		// Request a larger pool so unused photos can be prioritised.
 		if ( ! empty( $source_pref ) ) {
 			$api = $this->source_manager->get_source( $source_pref );
 			if ( $api ) {
-				$results = $api->search_photos( $keyword, 3, 'relevant', $orientation, $content_filter );
+				$results = $api->search_photos( $keyword, 10, 'relevant', $orientation, $content_filter );
 			} else {
 				$results = new WP_Error( 'unknown_source', __( 'Unknown image source.', 'unsplash-featured-images' ) );
 			}
 		} else {
-			$results = $this->source_manager->search_photos( $keyword, 3, 'relevant', $orientation, $content_filter );
+			$results = $this->source_manager->search_photos( $keyword, 10, 'relevant', $orientation, $content_filter );
 		}
 
 		if ( is_wp_error( $results ) ) {
 			wp_send_json_error( array( 'message' => $results->get_error_message() ) );
 		}
 
+		// Show unused photos first; fall back to all results if pool is exhausted.
+		$all_photos    = $results['results'] ?? array();
+		$unused_photos = $this->image_handler->filter_unused_photos( $all_photos );
+		$candidates    = ! empty( $unused_photos ) ? $unused_photos : $all_photos;
+
 		$photos = array();
-		foreach ( array_slice( $results['results'] ?? array(), 0, 3 ) as $photo ) {
+		foreach ( array_slice( $candidates, 0, 3 ) as $photo ) {
 			$photos[] = array(
 				'id'              => sanitize_text_field( $photo['id'] ),
 				'source'          => sanitize_key( $photo['source'] ?? 'unsplash' ),

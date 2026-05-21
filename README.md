@@ -6,7 +6,7 @@
 
 **Automatically assign stunning featured images to your WordPress posts — from Unsplash, Pexels, Pixabay, or Freepik — with smart fallbacks, optional Magnific AI upscaling, live rate gauges, and a preview-before-you-set grid.**
 
-[![Version](https://img.shields.io/badge/version-1.2.0-blue.svg)](https://github.com/Ethical-Agency/FeaturedPilot/releases)
+[![Version](https://img.shields.io/badge/version-1.2.1-blue.svg)](https://github.com/Ethical-Agency/FeaturedPilot/releases)
 [![WordPress](https://img.shields.io/badge/WordPress-5.0%2B-21759b.svg)](https://wordpress.org)
 [![PHP](https://img.shields.io/badge/PHP-7.4%2B-777bb4.svg)](https://php.net)
 [![License](https://img.shields.io/badge/license-GPL%20v2-green.svg)](https://www.gnu.org/licenses/gpl-2.0.html)
@@ -192,6 +192,9 @@ Yes — see [Defining keys in wp-config.php](#defining-keys-in-wp-configphp).
 ---
 
 ## Changelog
+
+### 1.2.1 — 2026-05-21
+- New: No-repeat image enforcement — every assigned photo's ID and source are tracked in post meta; all flows (manual assignment, bulk run, Posts-list bulk action, scheduled run, preview grid) now skip photos already used on any other post, ensuring each featured image is unique across your site. Falls back to the top API result only if the entire returned pool has been exhausted.
 
 ### 1.2.0 — 2026-05-21
 - New: Freepik stock photo support as a 4th priority source (100 req/day free, only free-licensed content returned)
