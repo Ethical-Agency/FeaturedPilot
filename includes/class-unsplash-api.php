@@ -275,6 +275,16 @@ class Unsplash_API {
 		delete_option( self::RATE_LIMIT_OPTION );
 	}
 
+	public function increment_hit_counter() {
+		$key  = 'fp_rate_hits_unsplash';
+		$hits = absint( get_transient( $key ) );
+		set_transient( $key, $hits + 1, DAY_IN_SECONDS );
+	}
+
+	public function get_source_slug() {
+		return 'unsplash';
+	}
+
 	/**
 	 * Return the active API key: constant override > stored option.
 	 *

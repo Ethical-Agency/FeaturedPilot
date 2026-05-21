@@ -24,18 +24,20 @@ $source_descriptions = array(
 	'pixabay'  => __( '~5 000 req/hr · API key param', 'unsplash-featured-images' ),
 );
 
-function fp_gauge_class( $remaining, $total ) {
-	if ( $total <= 0 ) {
-		return 'fp-gauge--unknown';
+if ( ! function_exists( 'fp_gauge_class' ) ) {
+	function fp_gauge_class( $remaining, $total ) {
+		if ( $total <= 0 ) {
+			return 'fp-gauge--unknown';
+		}
+		$pct = $remaining / $total;
+		if ( $pct >= 0.4 ) {
+			return 'fp-gauge--ok';
+		}
+		if ( $pct >= 0.15 ) {
+			return 'fp-gauge--warn';
+		}
+		return 'fp-gauge--critical';
 	}
-	$pct = $remaining / $total;
-	if ( $pct >= 0.4 ) {
-		return 'fp-gauge--ok';
-	}
-	if ( $pct >= 0.15 ) {
-		return 'fp-gauge--warn';
-	}
-	return 'fp-gauge--critical';
 }
 ?>
 <div class="wrap fp-settings">

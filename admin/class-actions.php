@@ -170,14 +170,23 @@ class Unsplash_Actions {
 		$photos = array();
 		foreach ( array_slice( $results['results'] ?? array(), 0, 3 ) as $photo ) {
 			$photos[] = array(
-				'id'               => sanitize_text_field( $photo['id'] ),
-				'source'           => esc_html( $photo['source'] ?? 'unsplash' ),
-				'thumb'            => esc_url( $photo['urls']['thumb'] ?? '' ),
-				'small'            => esc_url( $photo['urls']['small'] ?? '' ),
-				'photographer'     => esc_html( $photo['user']['name'] ?? '' ),
-				'photographer_url' => esc_url( $photo['user']['links']['html'] ?? '' ),
-				'photo_url'        => esc_url( $photo['links']['html'] ?? '' ),
-				'alt'              => esc_attr( $photo['alt_description'] ?? '' ),
+				'id'              => sanitize_text_field( $photo['id'] ),
+				'source'          => sanitize_key( $photo['source'] ?? 'unsplash' ),
+				'urls'            => array(
+					'thumb'   => esc_url( $photo['urls']['thumb'] ?? '' ),
+					'small'   => esc_url( $photo['urls']['small'] ?? '' ),
+					'regular' => esc_url( $photo['urls']['regular'] ?? '' ),
+				),
+				'links'           => array(
+					'html' => esc_url( $photo['links']['html'] ?? '' ),
+				),
+				'user'            => array(
+					'name'  => esc_html( $photo['user']['name'] ?? '' ),
+					'links' => array(
+						'html' => esc_url( $photo['user']['links']['html'] ?? '' ),
+					),
+				),
+				'alt_description' => esc_attr( $photo['alt_description'] ?? '' ),
 			);
 		}
 
