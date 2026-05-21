@@ -59,6 +59,8 @@ class FeaturedPilot_Updater {
 		add_filter( 'pre_set_site_transient_update_plugins', array( $this, 'inject_update' ) );
 		add_filter( 'plugins_api',                           array( $this, 'plugin_info' ), 20, 3 );
 		add_filter( 'upgrader_post_install',                 array( $this, 'rename_after_install' ), 10, 3 );
+		add_filter( 'plugin_action_links_' . $this->plugin_basename, array( $this, 'add_check_update_link' ) );
+		add_action( 'admin_init',                            array( $this, 'handle_check_update_request' ) );
 	}
 
 	// -------------------------------------------------------------------------
@@ -204,6 +206,45 @@ class FeaturedPilot_Updater {
 		activate_plugin( $this->plugin_basename );
 
 		return $result;
+	}
+
+	/**
+	 * Add a "Check for updates" link to the plugin row in the Plugins screen.
+	 *
+	 * @param array $links
+	 * @return array
+	 */
+	public function add_check_update_link( $links ) {
+		$url     = wp_nonce_url(
+			add_query_arg( 'fp_check_update', '1', admin_url( 'plugins.php' ) ),
+			'fp_check_update'
+		);
+		$links[] = '<a href="' . esc_url( $url ) . '">' . esc_html__( 'Check for updates', 'unsplash-featured-images' ) . '</a>';
+		return $links;
+	}
+
+	/**
+	 * Handle the "Check for updates" link click: clear cached release data and
+	 * force WordPress to re-check all plugins immediately.
+	 */
+	public function handle_check_update_request() {
+		if ( empty( $_GET['fp_check_update'] ) ) {
+			return;
+		}
+
+		if ( ! check_admin_referer( 'fp_check_update' ) || ! current_user_can( 'update_plugins' ) ) {
+			wp_die( esc_html__( 'You do not have permission to do this.', 'unsplash-featured-images' ) );
+		}
+
+		// Clear the cached GitHub release so the next check hits the API fresh.
+		$cache_key = 'fp_gh_release_' . substr( md5( $this->github_user . $this->github_repo ), 0, 12 );
+		delete_transient( $cache_key );
+
+		// Tell WordPress to re-check all plugin updates on the next load.
+		delete_site_transient( 'update_plugins' );
+
+		wp_safe_redirect( admin_url( 'plugins.php' ) );
+		exit;
 	}
 
 	// -------------------------------------------------------------------------
