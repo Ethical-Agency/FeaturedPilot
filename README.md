@@ -220,7 +220,7 @@ Yes — see [Defining keys in wp-config.php](#defining-keys-in-wp-configphp).
 - Improved: keyword generator supports three modes (post content, global keyword, combined)
 - Improved: `Activity Logger` gains `clear_all_logs()`
 - Fix: `Unsplash_API` missing `increment_hit_counter()` caused fatal error when rate limit was stored as 0
-- Fix: `ajax_search_preview` now returns nested normalized photo shape matching the JS `renderGrid()` reader
+- Fix: `ajax_search_preview` now returns nested normalised photo shape matching the JS `renderGrid()` reader
 
 ### 1.0.0
 - Initial release — Unsplash-only, single settings page, basic meta box
@@ -229,7 +229,7 @@ Yes — see [Defining keys in wp-config.php](#defining-keys-in-wp-configphp).
 
 ## Credits
 
-Built by [The Ethical Agency](https://theethicalagency.co.za).
+Built by [The Ethical Agency](https://ethical-agency.com/).
 
 Images sourced from [Unsplash](https://unsplash.com), [Pexels](https://www.pexels.com), and [Pixabay](https://pixabay.com). Please review each platform's license terms before using images in commercial contexts.
 
