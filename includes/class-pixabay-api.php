@@ -248,6 +248,11 @@ class Pixabay_API {
 		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
 		if ( $set_at > 0 && ( time() - $set_at ) >= HOUR_IN_SECONDS ) {
 			$this->reset_rate_limit_tracking();
+		} elseif ( 0 === $set_at ) {
+			$stored = get_option( self::RATE_LIMIT_OPTION );
+			if ( false !== $stored && 0 === absint( $stored ) ) {
+				$this->reset_rate_limit_tracking();
+			}
 		}
 		return absint( get_option( self::RATE_LIMIT_OPTION, self::DEFAULT_LIMIT ) );
 	}
@@ -275,9 +280,9 @@ class Pixabay_API {
 	}
 
 	public function increment_hit_counter() {
-		$key  = 'fp_rate_hits_pixabay';
+		$key  = 'fp_rate_hits_pixabay_' . gmdate( 'Y-m-d' );
 		$hits = absint( get_transient( $key ) );
-		set_transient( $key, $hits + 1, DAY_IN_SECONDS );
+		set_transient( $key, $hits + 1, 2 * DAY_IN_SECONDS );
 	}
 
 	// -------------------------------------------------------------------------

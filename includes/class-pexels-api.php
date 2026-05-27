@@ -199,6 +199,11 @@ class Pexels_API {
 		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
 		if ( $set_at > 0 && ( time() - $set_at ) >= HOUR_IN_SECONDS ) {
 			$this->reset_rate_limit_tracking();
+		} elseif ( 0 === $set_at ) {
+			$stored = get_option( self::RATE_LIMIT_OPTION );
+			if ( false !== $stored && 0 === absint( $stored ) ) {
+				$this->reset_rate_limit_tracking();
+			}
 		}
 		return absint( get_option( self::RATE_LIMIT_OPTION, 200 ) );
 	}
@@ -300,9 +305,9 @@ class Pexels_API {
 	}
 
 	public function increment_hit_counter() {
-		$key   = 'fp_rate_hits_pexels';
-		$hits  = absint( get_transient( $key ) );
-		set_transient( $key, $hits + 1, DAY_IN_SECONDS );
+		$key  = 'fp_rate_hits_pexels_' . gmdate( 'Y-m-d' );
+		$hits = absint( get_transient( $key ) );
+		set_transient( $key, $hits + 1, 2 * DAY_IN_SECONDS );
 	}
 
 	private function get_api_key() {

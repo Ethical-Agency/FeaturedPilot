@@ -190,7 +190,15 @@ class Unsplash_API {
 	public function get_rate_limit_remaining() {
 		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
 		if ( $set_at > 0 && ( time() - $set_at ) >= HOUR_IN_SECONDS ) {
+			// Timestamp present but expired.
 			$this->reset_rate_limit_tracking();
+		} elseif ( 0 === $set_at ) {
+			// No timestamp: data written before timestamp-tracking was added.
+			// If the stored value is explicitly 0 (not missing), treat as stale.
+			$stored = get_option( self::RATE_LIMIT_OPTION );
+			if ( false !== $stored && 0 === absint( $stored ) ) {
+				$this->reset_rate_limit_tracking();
+			}
 		}
 		return absint( get_option( self::RATE_LIMIT_OPTION, 50 ) );
 	}
@@ -335,9 +343,9 @@ class Unsplash_API {
 	}
 
 	public function increment_hit_counter() {
-		$key  = 'fp_rate_hits_unsplash';
+		$key  = 'fp_rate_hits_unsplash_' . gmdate( 'Y-m-d' );
 		$hits = absint( get_transient( $key ) );
-		set_transient( $key, $hits + 1, DAY_IN_SECONDS );
+		set_transient( $key, $hits + 1, 2 * DAY_IN_SECONDS );
 	}
 
 	public function get_source_slug() {
