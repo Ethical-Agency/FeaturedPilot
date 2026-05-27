@@ -145,22 +145,29 @@ class Source_Manager {
 	 * @return array  Keyed by slug.
 	 */
 	public function get_all_status() {
-		$status = array();
+		$status    = array();
+		$cron_next = absint( wp_next_scheduled( 'fp_hourly_rate_reset' ) );
+
 		foreach ( self::KNOWN_SOURCES as $slug ) {
 			$api = $this->get_source( $slug );
 			if ( $api ) {
+				$api_next     = method_exists( $api, 'get_next_reset_time' ) ? $api->get_next_reset_time() : 0;
+				$next_reset   = $api_next ?: $cron_next;
+
 				$status[ $slug ] = array(
-					'remaining'  => $api->get_rate_limit_remaining(),
-					'total'      => $api->get_rate_limit_limit(),
-					'hits_today' => absint( get_transient( 'fp_rate_hits_' . $slug ) ),
-					'connected'  => $this->is_source_connected( $slug ),
+					'remaining'    => $api->get_rate_limit_remaining(),
+					'total'        => $api->get_rate_limit_limit(),
+					'hits_today'   => absint( get_transient( 'fp_rate_hits_' . $slug ) ),
+					'connected'    => $this->is_source_connected( $slug ),
+					'next_reset_at' => $next_reset,
 				);
 			} else {
 				$status[ $slug ] = array(
-					'remaining'  => 0,
-					'total'      => 0,
-					'hits_today' => 0,
-					'connected'  => false,
+					'remaining'    => 0,
+					'total'        => 0,
+					'hits_today'   => 0,
+					'connected'    => false,
+					'next_reset_at' => $cron_next,
 				);
 			}
 		}

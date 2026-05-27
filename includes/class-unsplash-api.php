@@ -182,11 +182,28 @@ class Unsplash_API {
 
 	/**
 	 * Return cached rate-limit remaining count.
+	 * Auto-clears the stored value if it is more than one hour old so a stale
+	 * "0 remaining" from a previous session cannot block requests indefinitely.
 	 *
 	 * @return int
 	 */
 	public function get_rate_limit_remaining() {
+		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
+		if ( $set_at > 0 && ( time() - $set_at ) >= HOUR_IN_SECONDS ) {
+			$this->reset_rate_limit_tracking();
+		}
 		return absint( get_option( self::RATE_LIMIT_OPTION, 50 ) );
+	}
+
+	/**
+	 * Unix timestamp of when the rate-limit window will reset (set_at + 1 hour).
+	 * Returns 0 if unknown (no request has been tracked yet in this window).
+	 *
+	 * @return int
+	 */
+	public function get_next_reset_time() {
+		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
+		return $set_at > 0 ? $set_at + HOUR_IN_SECONDS : 0;
 	}
 
 	/**
@@ -301,6 +318,7 @@ class Unsplash_API {
 
 		if ( '' !== $remaining ) {
 			update_option( self::RATE_LIMIT_OPTION, absint( $remaining ), false );
+			update_option( self::RATE_LIMIT_OPTION . '_set_at', time(), false );
 		}
 		if ( '' !== $limit ) {
 			update_option( 'unsplash_rate_limit_total', absint( $limit ), false );
@@ -313,6 +331,7 @@ class Unsplash_API {
 	 */
 	public function reset_rate_limit_tracking() {
 		delete_option( self::RATE_LIMIT_OPTION );
+		delete_option( self::RATE_LIMIT_OPTION . '_set_at' );
 	}
 
 	public function increment_hit_counter() {

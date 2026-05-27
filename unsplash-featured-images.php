@@ -174,6 +174,8 @@ final class Unsplash_Featured_Images {
 	public static function deactivate() {
 		wp_clear_scheduled_hook( 'unsplash_daily_update' );
 		wp_clear_scheduled_hook( 'unsplash_weekly_update' );
+		wp_clear_scheduled_hook( 'unsplash_bulk_hourly_continue' );
+		wp_clear_scheduled_hook( 'fp_hourly_rate_reset' );
 	}
 }
 

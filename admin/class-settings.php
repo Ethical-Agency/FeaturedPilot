@@ -85,6 +85,8 @@ class Unsplash_Settings {
 					'bulkError'      => __( 'Could not start — check your API key and settings.', 'unsplash-featured-images' ),
 					'clearLogsConfirm' => __( 'Delete all activity logs? This cannot be undone.', 'unsplash-featured-images' ),
 					'clearLogsOk'    => __( 'All logs cleared.', 'unsplash-featured-images' ),
+					'resetsIn'       => __( 'Resets in {m}:{s}', 'unsplash-featured-images' ),
+					'resetsNow'      => __( 'Resetting…', 'unsplash-featured-images' ),
 				),
 			)
 		);

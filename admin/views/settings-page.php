@@ -163,7 +163,8 @@ if ( ! function_exists( 'fp_gauge_class' ) ) {
 					<div class="fp-gauge <?php echo esc_attr( $gauge_cls ); ?>"
 						 data-source="<?php echo esc_attr( $slug ); ?>"
 						 data-remaining="<?php echo esc_attr( $remaining ); ?>"
-						 data-total="<?php echo esc_attr( $total ); ?>">
+						 data-total="<?php echo esc_attr( $total ); ?>"
+						 data-fp-next-reset="<?php echo esc_attr( absint( $status['next_reset_at'] ?? 0 ) ); ?>">
 						<div class="fp-gauge__labels">
 							<span class="fp-gauge__label"><?php esc_html_e( 'Requests', 'unsplash-featured-images' ); ?></span>
 							<span class="fp-gauge__counts">

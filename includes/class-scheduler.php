@@ -34,12 +34,25 @@ class Scheduler {
 	// -------------------------------------------------------------------------
 
 	public function register_cron_events() {
-		add_action( 'unsplash_daily_update',        array( $this, 'run_daily_update' ) );
-		add_action( 'unsplash_weekly_update',       array( $this, 'run_weekly_update' ) );
+		add_action( 'unsplash_daily_update',         array( $this, 'run_daily_update' ) );
+		add_action( 'unsplash_weekly_update',        array( $this, 'run_weekly_update' ) );
 		add_action( 'unsplash_bulk_hourly_continue', array( $this, 'run_bulk_continue' ) );
+		add_action( 'fp_hourly_rate_reset',          array( $this, 'run_hourly_rate_reset' ) );
 
-		// Re-schedule on every load to keep the event alive if frequency changes.
+		// Re-schedule on every load to keep events alive if settings change.
 		add_action( 'init', array( $this, 'maybe_reschedule' ) );
+		add_action( 'init', array( $this, 'maybe_schedule_hourly_reset' ) );
+	}
+
+	/**
+	 * Cron callback: reset all API rate-limit counters every hour so a depleted
+	 * quota from a previous session never blocks future requests indefinitely.
+	 */
+	public function run_hourly_rate_reset() {
+		$plugin = Unsplash_Featured_Images::get_instance();
+		if ( $plugin && isset( $plugin->source_manager ) ) {
+			$plugin->source_manager->reset_all_rate_limits();
+		}
 	}
 
 	/**
@@ -71,6 +84,16 @@ class Scheduler {
 
 		if ( ! wp_next_scheduled( $hook ) ) {
 			wp_schedule_event( time(), $interval, $hook );
+		}
+	}
+
+	/**
+	 * Ensure the hourly rate-reset cron is always scheduled, independently of
+	 * whether the user has enabled the automated image-assignment schedule.
+	 */
+	public function maybe_schedule_hourly_reset() {
+		if ( ! wp_next_scheduled( 'fp_hourly_rate_reset' ) ) {
+			wp_schedule_event( time() + HOUR_IN_SECONDS, 'hourly', 'fp_hourly_rate_reset' );
 		}
 	}
 

@@ -97,6 +97,7 @@ class Pixabay_API {
 		$code = wp_remote_retrieve_response_code( $response );
 		if ( 429 === (int) $code ) {
 			update_option( self::RATE_LIMIT_OPTION, 0, false );
+			update_option( self::RATE_LIMIT_OPTION . '_set_at', time(), false );
 			$this->increment_hit_counter();
 			return new WP_Error( 'rate_limited', __( 'Pixabay API rate limit reached. Please try again later.', 'unsplash-featured-images' ) );
 		}
@@ -244,7 +245,16 @@ class Pixabay_API {
 	}
 
 	public function get_rate_limit_remaining() {
+		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
+		if ( $set_at > 0 && ( time() - $set_at ) >= HOUR_IN_SECONDS ) {
+			$this->reset_rate_limit_tracking();
+		}
 		return absint( get_option( self::RATE_LIMIT_OPTION, self::DEFAULT_LIMIT ) );
+	}
+
+	public function get_next_reset_time() {
+		$set_at = absint( get_option( self::RATE_LIMIT_OPTION . '_set_at', 0 ) );
+		return $set_at > 0 ? $set_at + HOUR_IN_SECONDS : 0;
 	}
 
 	public function get_rate_limit_limit() {
@@ -257,6 +267,7 @@ class Pixabay_API {
 
 	public function reset_rate_limit_tracking() {
 		delete_option( self::RATE_LIMIT_OPTION );
+		delete_option( self::RATE_LIMIT_OPTION . '_set_at' );
 	}
 
 	public function get_source_slug() {

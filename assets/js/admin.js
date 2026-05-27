@@ -167,6 +167,11 @@
 				$gauge.find( '.fp-gauge__total' ).text( total );
 				$gauge.find( '.fp-gauge__hits' ).text( 'Hits today: ' + ( parseInt( info.hits_today, 10 ) || 0 ) );
 
+				// Store next-reset timestamp for the countdown ticker.
+				if ( info.next_reset_at ) {
+					$gauge.data( 'fpNextReset', parseInt( info.next_reset_at, 10 ) );
+				}
+
 				// Badge on the order list item.
 				var $badge = $( '.fp-source-order__item[data-source="' + slug + '"] .fp-source-order__badge' );
 				if ( $badge.length ) {
@@ -195,10 +200,47 @@
 			});
 		}
 
+		// Tick the reset countdown on every gauge once per second.
+		function tickResetCountdowns() {
+			var now = Math.floor( Date.now() / 1000 );
+			$( '.fp-gauge' ).each(function () {
+				var nextReset = parseInt( $( this ).data( 'fpNextReset' ), 10 ) || 0;
+				var $span     = $( this ).find( '.fp-gauge__resets' );
+				if ( nextReset <= 0 ) {
+					$span.text( '' );
+					return;
+				}
+				var secs = nextReset - now;
+				if ( secs <= 0 ) {
+					$span.text( unsplashAdmin.i18n.resetsNow );
+				} else {
+					var m = Math.floor( secs / 60 );
+					var s = secs % 60;
+					$span.text(
+						unsplashAdmin.i18n.resetsIn
+							.replace( '{m}', m )
+							.replace( '{s}', s < 10 ? '0' + s : String( s ) )
+					);
+				}
+			});
+		}
+
+		// Seed initial next-reset values from PHP-rendered data attributes.
+		$( '.fp-gauge[data-fp-next-reset]' ).each(function () {
+			var v = parseInt( $( this ).attr( 'data-fp-next-reset' ), 10 );
+			if ( v > 0 ) {
+				$( this ).data( 'fpNextReset', v );
+			}
+		});
+
 		// Apply initial values from inline data.
 		if ( unsplashAdmin.rateStatus ) {
 			updateGauges( unsplashAdmin.rateStatus );
 		}
+
+		// Start the shared per-second countdown ticker.
+		tickResetCountdowns();
+		setInterval( tickResetCountdowns, 1000 );
 
 		// Poll for fresh data every 60 s.
 		setInterval(function () {
