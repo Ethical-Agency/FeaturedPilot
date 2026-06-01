@@ -27,6 +27,7 @@ class Unsplash_Meta_Box {
 		// Append our controls into the native Featured Image box.
 		add_filter( 'admin_post_thumbnail_html', array( $this, 'append_to_thumbnail_box' ), 10, 3 );
 		add_action( 'save_post', array( $this, 'save_meta_box' ), 10, 2 );
+		add_action( 'save_post', array( $this, 'preserve_thumbnail_on_external_save' ), 9999, 1 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
 
@@ -137,6 +138,57 @@ class Unsplash_Meta_Box {
 
 		$skip = isset( $_POST['unsplash_skip_auto'] ) ? 1 : 0;
 		update_post_meta( $post_id, '_unsplash_skip_auto', $skip );
+
+		// If the user intentionally removed the featured image via the WP admin editor,
+		// clear the backup so the preservation hook does not restore it.
+		if ( ! has_post_thumbnail( $post_id ) ) {
+			delete_post_meta( $post_id, '_fp_backup_thumbnail_id' );
+		}
+	}
+
+	// -------------------------------------------------------------------------
+	// Thumbnail preservation on external saves (e.g. CSV imports)
+	// -------------------------------------------------------------------------
+
+	/**
+	 * Restore a FeaturedPilot-assigned thumbnail if an external process (such as
+	 * a CSV import plugin) stripped _thumbnail_id without going through the WP
+	 * admin editor. Runs at priority 9999 so other plugins finish first.
+	 *
+	 * @param int $post_id
+	 */
+	public function preserve_thumbnail_on_external_save( $post_id ) {
+		if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+			return;
+		}
+
+		if ( wp_is_post_revision( $post_id ) || wp_is_post_autosave( $post_id ) ) {
+			return;
+		}
+
+		// When FeaturedPilot's own nonce is present this is a WP-admin save;
+		// the user's intent (keep or remove) was already handled by save_meta_box().
+		if ( isset( $_POST['unsplash_meta_box_nonce_field'] ) ) {
+			return;
+		}
+
+		// Nothing to restore if the thumbnail is still intact.
+		if ( has_post_thumbnail( $post_id ) ) {
+			return;
+		}
+
+		$backup_id = absint( get_post_meta( $post_id, '_fp_backup_thumbnail_id', true ) );
+		if ( ! $backup_id ) {
+			return;
+		}
+
+		// Verify the attachment still exists in the media library.
+		if ( ! get_post( $backup_id ) ) {
+			delete_post_meta( $post_id, '_fp_backup_thumbnail_id' );
+			return;
+		}
+
+		set_post_thumbnail( $post_id, $backup_id );
 	}
 
 	// -------------------------------------------------------------------------

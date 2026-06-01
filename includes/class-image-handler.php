@@ -145,6 +145,10 @@ class Image_Handler {
 		update_post_meta( $post_id, '_unsplash_assignment_method', 'manual' );
 		update_post_meta( $post_id, '_fp_photo_source', sanitize_key( $photo_data['source'] ?? 'unsplash' ) );
 
+		// Backup the attachment ID so external processes (e.g. CSV imports) cannot
+		// permanently strip the featured image without an explicit user action.
+		update_post_meta( $post_id, '_fp_backup_thumbnail_id', absint( $attachment_id ) );
+
 		return true;
 	}
 
@@ -218,6 +222,7 @@ class Image_Handler {
 		delete_post_meta( $post_id, '_unsplash_photo_id' );
 		delete_post_meta( $post_id, '_unsplash_photo_url' );
 		delete_post_meta( $post_id, '_unsplash_assignment_method' );
+		delete_post_meta( $post_id, '_fp_backup_thumbnail_id' );
 		$this->logger->log_action( 'image_removed', $post_id );
 	}
 
